@@ -1,0 +1,29 @@
+# Local Postgres for development and tests.
+# Start:  docker compose up -d
+# Stop:   docker compose down        (add -v to also delete the data)
+#
+# Two databases are created on first start:
+#   bookmarks       - for running the API locally
+#   bookmarks_test  - for the test suite (tests run against a real database, not mocks)
+
+services:
+  db:
+    image: postgres:18
+    container_name: bookmarks-db
+    environment:
+      POSTGRES_USER: bookmarks
+      POSTGRES_PASSWORD: bookmarks   # local development only - never use in production
+      POSTGRES_DB: bookmarks
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bookmarks -d bookmarks"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
