@@ -25,5 +25,9 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Note: .specify/ and .claude/ are intentionally tracked,
-# so viewers can see exactly what Spec Kit generated at each stage.
+# Agent folder: Claude Code can keep local settings and tokens in .claude/.
+# Only the Spec Kit skills are tracked, so viewers can see what Spec Kit generated.
+.claude/*
+!.claude/skills/
+
+# Note: .specify/ is intentionally tracked (constitution, templates, scripts).
