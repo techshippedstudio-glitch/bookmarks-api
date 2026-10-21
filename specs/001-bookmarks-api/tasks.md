@@ -27,9 +27,9 @@ its own.
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create `pyproject.toml` with project `bookmarks-api`, `requires-python = ">=3.11"`, runtime dependencies fastapi, uvicorn, sqlalchemy>=2.0, alembic, psycopg[binary]>=3.1 (compatible ranges, Constitution IV), a `dev` dependency group with pytest and httpx, the `src/` package `bookmarks_api`, and `[tool.pytest.ini_options]` with `testpaths = ["tests"]`
-- [ ] T002 Create the package skeleton `src/bookmarks_api/__init__.py` and test folders `tests/unit/`, `tests/integration/` per plan.md
-- [ ] T003 [P] Create `src/bookmarks_api/config.py`: read `DATABASE_URL` from the environment, defaulting to `postgresql://bookmarks:bookmarks@localhost:5432/bookmarks`, and rewrite a `postgresql://` prefix to `postgresql+psycopg://` (research.md, "Database access")
+- [X] T001 Create `pyproject.toml` with project `bookmarks-api`, `requires-python = ">=3.11"`, runtime dependencies fastapi, uvicorn, sqlalchemy>=2.0, alembic, psycopg[binary]>=3.1 (compatible ranges, Constitution IV), a `dev` dependency group with pytest and httpx2 (current Starlette test client dependency; plain httpx is deprecated there), the `src/` package `bookmarks_api`, and `[tool.pytest.ini_options]` with `testpaths = ["tests"]`
+- [X] T002 Create the package skeleton `src/bookmarks_api/__init__.py` and test folders `tests/unit/`, `tests/integration/` per plan.md
+- [X] T003 [P] Create `src/bookmarks_api/config.py`: read `DATABASE_URL` from the environment, defaulting to `postgresql://bookmarks:bookmarks@localhost:5432/bookmarks`, and rewrite a `postgresql://` prefix to `postgresql+psycopg://` (research.md, "Database access")
 
 ---
 
@@ -37,13 +37,13 @@ its own.
 
 **Purpose**: Core infrastructure that MUST be complete before any user story can be implemented
 
-- [ ] T004 Create `src/bookmarks_api/db.py` with a SQLAlchemy engine built from config, a `sessionmaker`, and a FastAPI dependency `get_session()` that yields a session and closes it
-- [ ] T005 Create `src/bookmarks_api/models.py` mapping table `bookmarks` exactly as data-model.md: `id bigint` primary key generated always as identity; `url varchar(2048) not null`; `url_normalized varchar(2048) not null, unique`; `title varchar(200) not null, char_length(title) >= 1`; `tags text[] not null, default '{}', cardinality(tags) <= 10`; `created_at timestamptz not null, default now()`
-- [ ] T006 Set up Alembic: `alembic.ini` and `migrations/env.py` reading the URL from `bookmarks_api.config` (overridable by `-x url=...` or the `sqlalchemy.url` option set by tests), with target metadata from `models.py`
-- [ ] T007 Create migration `migrations/versions/0001_create_bookmarks.py` creating table `bookmarks` with the constraints in T005 and indexes `uq_bookmarks_url_normalized UNIQUE (url_normalized)`, `ix_bookmarks_created_at_id (created_at DESC, id DESC)`, `ix_bookmarks_tags GIN (tags)`; downgrade drops the table
-- [ ] T008 [P] Create `src/bookmarks_api/errors.py`: Pydantic models `ErrorBody {code, message, details}` and `ErrorResponse {error: ErrorBody}`; domain exceptions `NotFoundError` and `DuplicateUrlError(existing_id)`; exception handlers producing the envelope for `RequestValidationError` (422 `validation_error`, field errors in `details`), `StarletteHTTPException` (status-mapped code), `NotFoundError` (404 `not_found`), `DuplicateUrlError` (409 `duplicate_url`, `details.existing_id`) and any other exception (500 `internal_error`, no internals) (Constitution III)
-- [ ] T009 Create `src/bookmarks_api/main.py` with `create_app()` registering the handlers from T008 and the router from `routes.py`, and module-level `app = create_app()`
-- [ ] T010 Create `tests/conftest.py`: read `TEST_DATABASE_URL` (default `postgresql://bookmarks:bookmarks@localhost:5432/bookmarks_test`), run `alembic upgrade head` against it once per session, override `get_session` to use the test database, truncate `bookmarks` (restart identity) before every test, and provide a `client` fixture using FastAPI `TestClient` (Constitution II: no database mocks)
+- [X] T004 Create `src/bookmarks_api/db.py` with a SQLAlchemy engine built from config, a `sessionmaker`, and a FastAPI dependency `get_session()` that yields a session and closes it
+- [X] T005 Create `src/bookmarks_api/models.py` mapping table `bookmarks` exactly as data-model.md: `id bigint` primary key generated always as identity; `url varchar(2048) not null`; `url_normalized varchar(2048) not null, unique`; `title varchar(200) not null, char_length(title) >= 1`; `tags text[] not null, default '{}', cardinality(tags) <= 10`; `created_at timestamptz not null, default now()`
+- [X] T006 Set up Alembic: `alembic.ini` and `migrations/env.py` reading the URL from `bookmarks_api.config` (overridable by `-x url=...` or the `sqlalchemy.url` option set by tests), with target metadata from `models.py`
+- [X] T007 Create migration `migrations/versions/0001_create_bookmarks.py` creating table `bookmarks` with the constraints in T005 and indexes `uq_bookmarks_url_normalized UNIQUE (url_normalized)`, `ix_bookmarks_created_at_id (created_at DESC, id DESC)`, `ix_bookmarks_tags GIN (tags)`; downgrade drops the table
+- [X] T008 [P] Create `src/bookmarks_api/errors.py`: Pydantic models `ErrorBody {code, message, details}` and `ErrorResponse {error: ErrorBody}`; domain exceptions `NotFoundError` and `DuplicateUrlError(existing_id)`; exception handlers producing the envelope for `RequestValidationError` (422 `validation_error`, field errors in `details`), `StarletteHTTPException` (status-mapped code), `NotFoundError` (404 `not_found`), `DuplicateUrlError` (409 `duplicate_url`, `details.existing_id`) and any other exception (500 `internal_error`, no internals) (Constitution III)
+- [X] T009 Create `src/bookmarks_api/main.py` with `create_app()` registering the handlers from T008 and the router from `routes.py`, and module-level `app = create_app()`
+- [X] T010 Create `tests/conftest.py`: read `TEST_DATABASE_URL` (default `postgresql://bookmarks:bookmarks@localhost:5432/bookmarks_test`), run `alembic upgrade head` against it once per session, override `get_session` to use the test database, truncate `bookmarks` (restart identity) before every test, and provide a `client` fixture using FastAPI `TestClient` (Constitution II: no database mocks)
 
 **Checkpoint**: Foundation ready; user story work can begin
 

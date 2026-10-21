@@ -104,4 +104,4 @@ considered.
 | alembic | Schema migrations | Required by the plan input |
 | psycopg[binary] | PostgreSQL driver | Required to talk to PostgreSQL |
 | pytest (test) | Test runner | De facto standard; far less code than unittest for fixtures |
-| httpx (test) | FastAPI `TestClient` | Required by FastAPI's test client |
+| httpx2 (test) | FastAPI `TestClient` | Required by FastAPI's test client (current Starlette deprecates plain httpx for it) |

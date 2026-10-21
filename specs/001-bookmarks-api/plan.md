@@ -21,7 +21,7 @@ existing `docker-compose.yml`.
 **Language/Version**: Python 3.11+ (tested on 3.12 and 3.13)
 
 **Primary Dependencies**: FastAPI, SQLAlchemy 2.0, Alembic, psycopg 3 (binary), Uvicorn; tests:
-pytest, httpx. Each is justified in [research.md](research.md) (Constitution IV).
+pytest, httpx2. Each is justified in [research.md](research.md) (Constitution IV).
 
 **Storage**: PostgreSQL (18 via the repo's `docker-compose.yml`); databases `bookmarks` (dev) and
 `bookmarks_test` (tests), URLs as in `.env.example`
