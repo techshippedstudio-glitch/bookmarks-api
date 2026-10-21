@@ -48,6 +48,13 @@ full test suite MUST pass before a feature is considered done.
 Rationale: untested behavior is unverified behavior; shipping tests with the feature keeps the spec,
 code and tests aligned.
 
+### VI. Cursor Pagination
+
+List endpoints SHOULD prefer cursor-based pagination over offset-based pagination.
+
+Rationale: offset pages shift when bookmarks are added or removed between requests; cursor pages
+do not.
+
 ## Quality Gates
 
 - The full test suite MUST pass against the test database before a feature is considered done.
@@ -72,4 +79,4 @@ or redefining a principle, MINOR for adding a principle or materially expanding 
 clarifications. Every plan and review MUST verify compliance with these principles; deviations
 require written justification in the plan.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-21
+**Version**: 1.1.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-21
