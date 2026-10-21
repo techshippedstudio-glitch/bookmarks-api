@@ -8,6 +8,16 @@
 
 **Input**: User description: "Build a bookmarks API. A user can save a link with a title and optional tags, list their bookmarks newest first, filter by tag, and delete a bookmark. Saving the same URL twice must not create a duplicate."
 
+## Clarifications
+
+### Session 2026-10-21
+
+- Q: When someone saves a link that is already bookmarked, what should happen? → A: Reject it with a conflict error that includes the existing bookmark's identifier; the existing bookmark is left unchanged.
+- Q: Which links count as "the same link"? → A: Links that match after normalization: scheme and host lowercased, default port removed, trailing slash on the path removed, fragment (#...) removed; the query string is kept as is.
+- Q: How should tags be cleaned up and limited? → A: Trim spaces, lowercase, drop duplicates; 1 to 30 characters of letters, digits and hyphens; at most 10 tags per bookmark.
+- Q: How should the list behave when there are many bookmarks? → A: Return pages: 20 per page by default, up to 100 per page, using a limit and an offset, plus the total count.
+- Q: How long can a title and a link be? → A: Title 1 to 200 characters; link at most 2048 characters.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Save a bookmark (Priority: P1)
@@ -25,13 +35,15 @@ contains the saved link, title, tags and the time it was saved.
 
 1. **Given** no bookmarks exist, **When** the user saves a link with a title, **Then** the bookmark
    is stored and returned with its link, title, an empty tag list and its saved time.
-2. **Given** no bookmarks exist, **When** the user saves a link with a title and the tags "python"
-   and "api", **Then** the bookmark is returned with both tags.
-3. **Given** a bookmark for a link already exists, **When** the user saves the same link again,
-   **Then** no second bookmark is created.
+2. **Given** no bookmarks exist, **When** the user saves a link with a title and the tags "Python",
+   " api " and "python", **Then** the bookmark is returned with the tags "api" and "python".
+3. **Given** a bookmark for `https://example.com/docs` exists, **When** the user saves
+   `HTTPS://Example.com/docs/#intro`, **Then** no second bookmark is created and the user receives
+   a conflict error that includes the existing bookmark's identifier.
 4. **Given** any state, **When** the user tries to save a bookmark without a link or without a
-   title, or with a link that is not a valid web address, **Then** nothing is saved and the user
-   receives an error explaining what is wrong.
+   title, with a link that is not a valid http or https address, with a title over 200 characters,
+   with more than 10 tags, or with an invalid tag, **Then** nothing is saved and the user receives
+   an error explaining what is wrong.
 
 ---
 
@@ -48,9 +60,14 @@ the list returns all of them, most recently saved first.
 **Acceptance Scenarios**:
 
 1. **Given** three bookmarks saved one after another, **When** the user lists bookmarks, **Then**
-   all three are returned, the most recently saved first.
-2. **Given** no bookmarks exist, **When** the user lists bookmarks, **Then** an empty list is
-   returned, not an error.
+   all three are returned, the most recently saved first, with a total count of 3.
+2. **Given** no bookmarks exist, **When** the user lists bookmarks, **Then** an empty list with a
+   total count of 0 is returned, not an error.
+3. **Given** 25 bookmarks exist, **When** the user lists without paging options, **Then** the 20
+   newest are returned with a total count of 25; **When** the user asks for the next page, **Then**
+   the remaining 5 are returned.
+4. **Given** any state, **When** the user asks for more than 100 per page or a negative offset,
+   **Then** the user receives an error explaining the allowed range.
 
 ---
 
@@ -68,7 +85,9 @@ tag filter returns only the matching bookmarks, still newest first.
 
 1. **Given** bookmarks tagged "python", "postgres" and both, **When** the user filters by
    "postgres", **Then** only the bookmarks carrying that tag are returned, newest first.
-2. **Given** bookmarks exist, **When** the user filters by a tag no bookmark has, **Then** an empty
+2. **Given** a bookmark tagged "postgres", **When** the user filters by "Postgres", **Then** the
+   bookmark is returned (the filter is normalized like tags are).
+3. **Given** bookmarks exist, **When** the user filters by a tag no bookmark has, **Then** an empty
    list is returned.
 
 ---
@@ -96,40 +115,57 @@ appears in the list.
 
 ### Edge Cases
 
-- What happens when the same link is saved twice with a different title or different tags?
-- What counts as "the same link": does trailing slash, letter case or a tracking parameter matter?
-- How are tags handled when they differ only in letter case or surrounding spaces ("API" vs " api")?
-- What happens when the same tag is given twice for one bookmark?
-- How long can a title or a tag be, and how many tags can one bookmark have?
-- What happens when a very large number of bookmarks exist and the user lists them?
+- Saving a link that is already bookmarked, even with a different title or tags, is rejected with
+  a conflict error that includes the existing bookmark's identifier; the existing bookmark is not
+  changed.
+- Links that differ only in scheme or host letter case, a default port (`:80` for http, `:443`
+  for https), a trailing slash on the path, or a fragment are the same link. Links with different
+  query strings are different links.
+- Tags are trimmed and lowercased before saving or filtering; repeated tags on one bookmark are
+  kept once.
+- A tag that is empty after trimming, longer than 30 characters, or contains characters other
+  than letters, digits and hyphens is rejected.
+- Two saves of the same link at the same moment still leave exactly one bookmark.
+- Asking for an offset past the end of the list returns an empty page with the correct total count.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: System MUST allow a user to save a bookmark consisting of a link, a title and zero or
-  more tags.
-- **FR-002**: System MUST reject a bookmark that has no link, no title, or a link that is not a
-  valid web address (http or https), and MUST explain the problem to the user.
+- **FR-001**: System MUST allow a user to save a bookmark consisting of a link, a title and zero to
+  10 tags.
+- **FR-002**: System MUST reject a bookmark that has no link, no title, a link that is not a valid
+  http or https address, a link longer than 2048 characters, or a title longer than 200
+  characters, and MUST explain the problem to the user.
 - **FR-003**: System MUST record the time each bookmark was saved.
-- **FR-004**: System MUST NOT store two bookmarks for the same link.
+- **FR-004**: System MUST NOT store two bookmarks for the same link, where links are compared after
+  normalization (scheme and host lowercased, default port removed, trailing path slash removed,
+  fragment removed, query kept). A save of an existing link MUST be rejected with a conflict error
+  that includes the existing bookmark's identifier, and MUST hold even when two saves happen at
+  the same moment.
 - **FR-005**: System MUST return the saved bookmark, including an identifier the user can use to
   delete it.
-- **FR-006**: System MUST list all bookmarks ordered by saved time, most recent first.
+- **FR-006**: System MUST list bookmarks ordered by saved time, most recent first, in pages of 20
+  by default and at most 100, selected with a limit and an offset, and MUST include the total
+  number of matching bookmarks.
 - **FR-007**: System MUST allow the user to filter the list to bookmarks carrying a given tag,
-  keeping the newest-first order.
+  keeping the newest-first order and paging; the filter value is normalized the same way as tags.
 - **FR-008**: System MUST allow the user to delete a bookmark by its identifier.
 - **FR-009**: System MUST return a not-found error when the user deletes a bookmark that does not
   exist.
 - **FR-010**: System MUST report every error in one consistent format with a machine-readable code
   and a human-readable message.
+- **FR-011**: System MUST normalize tags by trimming spaces, lowercasing and removing duplicates,
+  and MUST reject tags that are empty, longer than 30 characters, or contain characters other than
+  letters, digits and hyphens.
 
 ### Key Entities
 
-- **Bookmark**: A link the user saved. Has a link (web address), a title, the time it was saved,
-  and a set of tags. Each link appears at most once.
-- **Tag**: A short label describing a bookmark. A bookmark can have several tags, and a tag can be
-  shared by many bookmarks.
+- **Bookmark**: A link the user saved. Has an identifier, a link (web address, at most 2048
+  characters) as the user gave it, the normalized form of that link (unique across all
+  bookmarks), a title (1 to 200 characters), the time it was saved, and up to 10 tags.
+- **Tag**: A short label (1 to 30 lowercase letters, digits or hyphens) describing a bookmark. A
+  bookmark can have several tags, and a tag can be shared by many bookmarks.
 
 ## Success Criteria *(mandatory)*
 
@@ -137,7 +173,8 @@ appears in the list.
 
 - **SC-001**: A user can save a bookmark and see it at the top of their list in a single save
   followed by a single list request.
-- **SC-002**: Saving the same link any number of times always leaves exactly one bookmark for it.
+- **SC-002**: Saving the same link any number of times, in any of its equivalent forms, always
+  leaves exactly one bookmark for it.
 - **SC-003**: Filtering by a tag returns only bookmarks with that tag in 100% of tested cases.
 - **SC-004**: Every acceptance scenario above is covered by an automated test that passes.
 - **SC-005**: Every error a user can trigger returns the same error format.
