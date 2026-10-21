@@ -1,6 +1,8 @@
 """Database queries for bookmarks."""
 
-from sqlalchemy import delete, func, select
+from datetime import datetime
+
+from sqlalchemy import delete, func, select, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -34,19 +36,31 @@ def create_bookmark(session: Session, data: BookmarkCreate) -> BookmarkRow:
 
 
 def list_bookmarks(
-    session: Session, *, limit: int, offset: int, tag: str | None = None
-) -> tuple[list[BookmarkRow], int]:
-    """Return one page of bookmarks, newest first, and the total number matching the filter."""
+    session: Session,
+    *,
+    limit: int,
+    after: tuple[datetime, int] | None = None,
+    tag: str | None = None,
+) -> tuple[list[BookmarkRow], int, bool]:
+    """Return one page of bookmarks, newest first, the total matching the filter, and whether
+    more pages follow.
+
+    Keyset pagination (Constitution VI): the page starts strictly after the (created_at, id)
+    position in ``after``, so saves and deletes between requests never shift the page. The
+    row comparison matches the (created_at DESC, id DESC) index, so every page is a range scan.
+    """
     conditions = [BookmarkRow.tags.contains([tag])] if tag else []
     total = session.scalar(select(func.count()).select_from(BookmarkRow).where(*conditions))
+    page_conditions = list(conditions)
+    if after is not None:
+        page_conditions.append(tuple_(BookmarkRow.created_at, BookmarkRow.id) < tuple_(*after))
     rows = session.scalars(
         select(BookmarkRow)
-        .where(*conditions)
+        .where(*page_conditions)
         .order_by(BookmarkRow.created_at.desc(), BookmarkRow.id.desc())
-        .limit(limit)
-        .offset(offset)
+        .limit(limit + 1)
     ).all()
-    return list(rows), total or 0
+    return list(rows[:limit]), total or 0, len(rows) > limit
 
 
 def delete_bookmark(session: Session, bookmark_id: int) -> None:

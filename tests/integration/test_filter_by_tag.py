@@ -44,10 +44,14 @@ def test_filter_works_with_paging(client: TestClient) -> None:
     ids = [save(client, f"p{n}", ["api"]) for n in range(5)]
     save(client, "other", ["misc"])
 
-    body = client.get("/bookmarks", params={"tag": "api", "limit": 2, "offset": 2}).json()
+    first = client.get("/bookmarks", params={"tag": "api", "limit": 2}).json()
+    body = client.get(
+        "/bookmarks", params={"tag": "api", "limit": 2, "cursor": first["next_cursor"]}
+    ).json()
 
     assert [item["id"] for item in body["items"]] == list(reversed(ids))[2:4]
     assert body["total"] == 5
+    assert body["next_cursor"]
 
 
 @pytest.mark.parametrize("bad", ["no spaces", "x" * 31, "c++"])

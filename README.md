@@ -98,7 +98,7 @@ uv run pytest                                          # tests, against the book
 | Endpoint | What it does |
 | --- | --- |
 | `POST /bookmarks` | Save `{"url", "title", "tags"}`; 409 if the link is already saved |
-| `GET /bookmarks?tag=&limit=&offset=` | List newest first, 20 per page by default, optional tag filter |
+| `GET /bookmarks?tag=&limit=&cursor=` | List newest first, 20 per page by default, optional tag filter; pass `next_cursor` from one page as `cursor` to get the next |
 | `DELETE /bookmarks/{id}` | Delete a bookmark |
 
 Every error has the same shape: `{"error": {"code", "message", "details"}}`.

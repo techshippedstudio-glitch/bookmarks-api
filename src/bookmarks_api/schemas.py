@@ -50,4 +50,6 @@ class BookmarkPage(BaseModel):
     items: list[Bookmark]
     total: int = Field(description="Number of bookmarks matching the filter.")
     limit: int
-    offset: int
+    next_cursor: str | None = Field(
+        description="Pass as `cursor` to get the next page; null on the last page."
+    )

@@ -203,8 +203,8 @@ Task: "BookmarkCreate / Bookmark in src/bookmarks_api/schemas.py"               
 
 ## Phase 9: Convergence
 
-- [ ] T032 CRITICAL: Replace offset paging in `src/bookmarks_api/repository.py` and `src/bookmarks_api/routes.py` with keyset paging on `(created_at, id)` (`WHERE (created_at, id) < (:created_at, :id)`), per Constitution VI (contradicts)
-- [ ] T033 Add `next_cursor` to `BookmarkPage` in `src/bookmarks_api/schemas.py` and an opaque base64url cursor encoder/decoder in `src/bookmarks_api/cursor.py`; return `next_cursor` only when more rows exist, per FR-006 and contracts/openapi.yaml (missing)
-- [ ] T034 Return 422 `validation_error` for a malformed `cursor` and for any request that sends `offset`, with a message that names `cursor`, per spec Edge Cases (missing)
-- [ ] T035 Rewrite the paging tests in `tests/integration/test_list_bookmarks.py` and `tests/integration/test_filter_by_tag.py` for cursors, and add a test that pages through all results while bookmarks are saved between requests and finds no duplicates and no gaps, per US2/AC3-AC5 and the Constitution VI quality gate (missing)
-- [ ] T036 Update the `GET /bookmarks` row in `README.md` to document `cursor` and `next_cursor` instead of `offset`, per contracts/openapi.yaml (partial)
+- [X] T032 CRITICAL: Replace offset paging in `src/bookmarks_api/repository.py` and `src/bookmarks_api/routes.py` with keyset paging on `(created_at, id)` (`WHERE (created_at, id) < (:created_at, :id)`), per Constitution VI (contradicts)
+- [X] T033 Add `next_cursor` to `BookmarkPage` in `src/bookmarks_api/schemas.py` and an opaque base64url cursor encoder/decoder in `src/bookmarks_api/cursor.py`; return `next_cursor` only when more rows exist, per FR-006 and contracts/openapi.yaml (missing)
+- [X] T034 Return 422 `validation_error` for a malformed `cursor` and for any request that sends `offset`, with a message that names `cursor`, per spec Edge Cases (missing)
+- [X] T035 Rewrite the paging tests in `tests/integration/test_list_bookmarks.py` and `tests/integration/test_filter_by_tag.py` for cursors, and add a test that pages through all results while bookmarks are saved between requests and finds no duplicates and no gaps, per US2/AC3-AC5 and the Constitution VI quality gate (missing)
+- [X] T036 Update the `GET /bookmarks` row in `README.md` to document `cursor` and `next_cursor` instead of `offset`, per contracts/openapi.yaml (partial)
