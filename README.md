@@ -83,6 +83,26 @@ git checkout main           # back to the latest
 
 Your agent's output will differ from the video: coding agents don't produce identical results on every run. That's expected. The spec is the source of truth, so review each artifact against it.
 
+## Run the finished API
+
+From `ep01-implement` onward the repo contains a working API:
+
+```bash
+docker compose up -d                                   # Postgres
+uv sync                                                # install dependencies
+uv run alembic upgrade head                            # create the schema
+uv run uvicorn bookmarks_api.main:app --reload         # http://127.0.0.1:8000/docs
+uv run pytest                                          # tests, against the bookmarks_test database
+```
+
+| Endpoint | What it does |
+| --- | --- |
+| `POST /bookmarks` | Save `{"url", "title", "tags"}`; 409 if the link is already saved |
+| `GET /bookmarks?tag=&limit=&offset=` | List newest first, 20 per page by default, optional tag filter |
+| `DELETE /bookmarks/{id}` | Delete a bookmark |
+
+Every error has the same shape: `{"error": {"code", "message", "details"}}`.
+
 ## Postgres
 
 `docker-compose.yml` starts Postgres 18 with two databases:

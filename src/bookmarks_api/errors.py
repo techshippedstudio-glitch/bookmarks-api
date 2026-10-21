@@ -53,7 +53,7 @@ def _validation_details(exc: RequestValidationError) -> list[dict[str, Any]]:
         details.append(
             {
                 "field": ".".join(str(part) for part in err.get("loc", ()) if part != "body"),
-                "message": err.get("msg", "Invalid value."),
+                "message": err.get("msg", "Invalid value.").removeprefix("Value error, "),
             }
         )
     return details

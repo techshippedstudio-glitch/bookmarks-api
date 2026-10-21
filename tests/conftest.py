@@ -39,8 +39,9 @@ def session_factory(engine: Engine) -> sessionmaker[Session]:
     return sessionmaker(bind=engine, expire_on_commit=False)
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def clean_database(engine: Engine) -> None:
+    """Empty the table. Integration tests use it automatically (tests/integration/conftest.py)."""
     with engine.begin() as connection:
         connection.execute(text("TRUNCATE bookmarks RESTART IDENTITY"))
 
