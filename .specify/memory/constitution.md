@@ -48,6 +48,15 @@ full test suite MUST pass before a feature is considered done.
 Rationale: untested behavior is unverified behavior; shipping tests with the feature keeps the spec,
 code and tests aligned.
 
+### VI. Cursor Pagination
+
+Every endpoint that returns a list MUST paginate with an opaque cursor over a stable, unique sort
+key (keyset pagination), and MUST return the cursor for the next page, or none on the last page.
+Offset-based pagination (skipping N rows) MUST NOT be used, in the API or in database queries.
+
+Rationale: offset pages shift when rows are added or removed between requests, so clients see
+duplicates or miss items, and deep offsets make the database read and discard every skipped row.
+
 ## Quality Gates
 
 - The full test suite MUST pass against the test database before a feature is considered done.
@@ -55,6 +64,8 @@ code and tests aligned.
 - Every new dependency MUST appear in the plan with its justification (Principle IV).
 - Every endpoint MUST appear in the generated OpenAPI document with request and response models
   (Principle I).
+- Every list endpoint MUST have a test that pages through all results while rows are added between
+  requests, and sees no duplicates and no gaps (Principle VI).
 
 ## Development Workflow
 
@@ -72,4 +83,4 @@ or redefining a principle, MINOR for adding a principle or materially expanding 
 clarifications. Every plan and review MUST verify compliance with these principles; deviations
 require written justification in the plan.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-21
+**Version**: 1.1.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-21
