@@ -200,3 +200,11 @@ Task: "BookmarkCreate / Bookmark in src/bookmarks_api/schemas.py"               
 - [X] T029 Require `bookmark_id >= 1` on `DELETE /bookmarks/{bookmark_id}` in `src/bookmarks_api/routes.py` so 0 and negative ids return 422 `validation_error`, with a test in `tests/integration/test_delete_bookmark.py`, per contracts/openapi.yaml (contradicts)
 - [X] T030 Align `specs/001-bookmarks-api/contracts/openapi.yaml` so the 10-tag limit applies after normalization and de-duplication, matching data-model.md, per FR-011 (contradicts)
 - [X] T031 Run the full test suite on Python 3.11 and 3.12 and fix any incompatibility, per plan: Technical Context (partial)
+
+## Phase 9: Convergence
+
+- [ ] T032 CRITICAL: Replace offset paging in `src/bookmarks_api/repository.py` and `src/bookmarks_api/routes.py` with keyset paging on `(created_at, id)` (`WHERE (created_at, id) < (:created_at, :id)`), per Constitution VI (contradicts)
+- [ ] T033 Add `next_cursor` to `BookmarkPage` in `src/bookmarks_api/schemas.py` and an opaque base64url cursor encoder/decoder in `src/bookmarks_api/cursor.py`; return `next_cursor` only when more rows exist, per FR-006 and contracts/openapi.yaml (missing)
+- [ ] T034 Return 422 `validation_error` for a malformed `cursor` and for any request that sends `offset`, with a message that names `cursor`, per spec Edge Cases (missing)
+- [ ] T035 Rewrite the paging tests in `tests/integration/test_list_bookmarks.py` and `tests/integration/test_filter_by_tag.py` for cursors, and add a test that pages through all results while bookmarks are saved between requests and finds no duplicates and no gaps, per US2/AC3-AC5 and the Constitution VI quality gate (missing)
+- [ ] T036 Update the `GET /bookmarks` row in `README.md` to document `cursor` and `next_cursor` instead of `offset`, per contracts/openapi.yaml (partial)
