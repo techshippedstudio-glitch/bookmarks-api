@@ -68,12 +68,18 @@ considered.
 ## Ordering and paging
 
 - **Decision**: Order by `created_at DESC, id DESC` (the id breaks ties for bookmarks saved in the
-  same instant). Limit/offset paging, default 20, max 100; the response includes `total` from a
-  `COUNT(*)` with the same filter. Index on `(created_at DESC, id DESC)`.
-- **Rationale**: Matches the clarification; offset paging is simple for clients and fine at the
-  stated scale.
-- **Alternatives considered**: cursor (keyset) paging, better for very large or fast-changing lists;
-  noted as a future change if scale grows.
+  same instant). Keyset paging, default 20, max 100: the next page is
+  `WHERE (created_at, id) < (:created_at, :id)` using the existing index on
+  `(created_at DESC, id DESC)`. The cursor is the last row's `created_at` and `id`, JSON-encoded and
+  base64url-encoded (standard library only), returned as `next_cursor` when more rows exist. The
+  response still includes `total` from a `COUNT(*)` with the same filter. A malformed cursor, or a
+  request that sends `offset`, returns 422 `validation_error`.
+- **Rationale**: Constitution VI (v1.1.0) forbids offset paging. Keyset pages stay stable when
+  bookmarks are saved or deleted between requests, and each page is an index range scan, however
+  deep the client pages.
+- **Alternatives considered**: limit/offset (the original decision; violates VI); a signed cursor
+  (tamper-proof, but the cursor only selects a position in the user's own list, so a malformed
+  value is simply rejected).
 
 ## Error envelope
 

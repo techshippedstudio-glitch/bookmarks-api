@@ -18,6 +18,10 @@
 - Q: How should the list behave when there are many bookmarks? → A: Return pages: 20 per page by default, up to 100 per page, using a limit and an offset, plus the total count.
 - Q: How long can a title and a link be? → A: Title 1 to 200 characters; link at most 2048 characters.
 
+### Session 2026-10-21 (constitution v1.1.0)
+
+- Q: Principle VI forbids offset pagination. How does a client ask for the next page? → A: Each page returns an opaque next-page token (none on the last page); the client passes it back to get the next page. The offset option is removed, and a request that still sends it gets a validation error that points to the token.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Save a bookmark (Priority: P1)
@@ -64,10 +68,13 @@ the list returns all of them, most recently saved first.
 2. **Given** no bookmarks exist, **When** the user lists bookmarks, **Then** an empty list with a
    total count of 0 is returned, not an error.
 3. **Given** 25 bookmarks exist, **When** the user lists without paging options, **Then** the 20
-   newest are returned with a total count of 25; **When** the user asks for the next page, **Then**
-   the remaining 5 are returned.
-4. **Given** any state, **When** the user asks for more than 100 per page or a negative offset,
-   **Then** the user receives an error explaining the allowed range.
+   newest are returned with a total count of 25 and a next-page token; **When** the user asks for
+   the next page with that token, **Then** the remaining 5 are returned with no next-page token.
+4. **Given** any state, **When** the user asks for more than 100 per page, or sends a next-page
+   token that is malformed, **Then** the user receives an error explaining what is allowed.
+5. **Given** 25 bookmarks exist and the user has fetched the first page, **When** a new bookmark is
+   saved and the user asks for the next page with the token, **Then** the next page holds exactly
+   the 5 older bookmarks, with none repeated and none skipped.
 
 ---
 
@@ -126,7 +133,11 @@ appears in the list.
 - A tag that is empty after trimming, longer than 30 characters, or contains characters other
   than letters, digits and hyphens is rejected.
 - Two saves of the same link at the same moment still leave exactly one bookmark.
-- Asking for an offset past the end of the list returns an empty page with the correct total count.
+- A malformed next-page token (one that does not decode to a position in the list) is rejected with
+  a validation error.
+- A request that sends the removed offset option is rejected with a validation error that names the
+  next-page token instead.
+- Bookmarks saved or deleted between page requests never cause a bookmark to be repeated or skipped.
 
 ## Requirements *(mandatory)*
 
@@ -146,8 +157,9 @@ appears in the list.
 - **FR-005**: System MUST return the saved bookmark, including an identifier the user can use to
   delete it.
 - **FR-006**: System MUST list bookmarks ordered by saved time, most recent first, in pages of 20
-  by default and at most 100, selected with a limit and an offset, and MUST include the total
-  number of matching bookmarks.
+  by default and at most 100, and MUST include the total number of matching bookmarks. Each page
+  MUST return an opaque next-page token (none on the last page), and paging with it MUST NOT repeat
+  or skip bookmarks when bookmarks are saved or deleted between requests (Constitution VI).
 - **FR-007**: System MUST allow the user to filter the list to bookmarks carrying a given tag,
   keeping the newest-first order and paging; the filter value is normalized the same way as tags.
 - **FR-008**: System MUST allow the user to delete a bookmark by its identifier.

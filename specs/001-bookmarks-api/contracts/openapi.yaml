@@ -45,10 +45,11 @@ paths:
           in: query
           required: false
           schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
-        - name: offset
+        - name: cursor
           in: query
           required: false
-          schema: { type: integer, minimum: 0, default: 0 }
+          schema: { type: string }
+          description: The next_cursor from the previous page; omit for the first page
       responses:
         '200':
           description: A page of bookmarks
@@ -56,7 +57,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/BookmarkPage' }
         '422':
-          description: Invalid tag, limit or offset
+          description: Invalid tag, limit or cursor, or the removed offset parameter
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
@@ -109,12 +110,12 @@ components:
         created_at: { type: string, format: date-time }
     BookmarkPage:
       type: object
-      required: [items, total, limit, offset]
+      required: [items, total, limit, next_cursor]
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/Bookmark' } }
         total: { type: integer, description: Number of bookmarks matching the filter }
         limit: { type: integer }
-        offset: { type: integer }
+        next_cursor: { type: [string, 'null'], description: Pass as cursor to get the next page; null on the last page }
     ErrorResponse:
       type: object
       required: [error]

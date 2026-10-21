@@ -81,6 +81,9 @@ link returns 409 with `details.existing_id`.
 **Independent Test**: `GET /bookmarks` returns saved bookmarks newest first with `total`, `limit`
 and `offset`.
 
+> Note (constitution v1.1.0): T017-T020 built offset paging, which Principle VI now forbids. Corrective
+> tasks are appended by /speckit-converge; these tasks are kept as history.
+
 ### Tests for User Story 2
 
 - [X] T017 [P] [US2] Integration tests in `tests/integration/test_list_bookmarks.py` for User Story 2 scenarios 1 to 4: three saves listed newest first with `total == 3`; empty list with `total == 0`; 25 bookmarks → first page of 20 with `total == 25`, `offset=20` → 5; `limit=101`, `limit=0` and `offset=-1` → 422 `validation_error`; offset past the end → empty page with correct total

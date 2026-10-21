@@ -32,7 +32,8 @@ bookmark's "link" is the `url` field in the API and the database.
 | `title` | Required; 1 to 200 characters after trimming | FR-002 |
 | `tags` | Optional list; each trimmed and lowercased; must match `^[a-z0-9-]{1,30}$`; duplicates removed; at most 10 after de-duplication | FR-011, FR-001 |
 | `limit` | Integer 1 to 100, default 20 | FR-006 |
-| `offset` | Integer 0 or greater, default 0 | FR-006 |
+| `cursor` | Optional opaque token from a previous page's `next_cursor`; must decode to a timestamp and an id | FR-006 |
+| `offset` | Not accepted (Constitution VI); sending it returns 422 | FR-006 |
 | `tag` (filter) | Normalized like a tag; must be a valid tag | FR-007 |
 
 The database constraints (`varchar` lengths, unique index, cardinality check) are a second line of
