@@ -1,50 +1,75 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# Bookmarks API Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Typed API Contracts
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Every endpoint MUST declare an explicit request model (when it accepts a body or query
+parameters beyond simple path IDs) and an explicit response model. Untyped dictionaries MUST NOT
+cross the HTTP boundary in either direction. The published API description (OpenAPI) MUST be
+generated from these models, so the contract and the code cannot drift apart.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+Rationale: typed models are the contract with API consumers; they make validation automatic and
+keep documentation truthful.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### II. Real-Database Testing (NON-NEGOTIABLE)
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+Tests that touch persistence MUST run against a real PostgreSQL database dedicated to tests. Mocks,
+fakes or in-memory substitutes for the database MUST NOT be used to verify persistence behavior,
+including constraints, ordering and filtering. Each test MUST start from a known database state.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Rationale: constraints, transactions and query behavior are where persistence bugs live; only the
+real database exercises them.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### III. Consistent Error Shape
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Every error response, including validation errors, not-found and conflicts, MUST use one JSON
+shape with a stable machine-readable `code` and a human-readable `message`, plus optional
+`details`. HTTP status codes MUST match the error class (400/422 invalid input, 404 not found, 409
+conflict). Internal details such as stack traces or SQL MUST NOT appear in responses.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Rationale: clients handle one shape instead of special-casing every endpoint.
+
+### IV. Minimal Dependencies
+
+A new third-party dependency MUST be justified in the plan by a need the standard library or an
+existing dependency cannot meet with reasonable effort. Dependencies MUST be pinned to a compatible
+version range. Each dependency is a maintenance and security cost and MUST earn its place.
+
+Rationale: fewer dependencies mean fewer upgrades, fewer vulnerabilities and a codebase viewers can
+read end to end.
+
+### V. Tests Ship With Every Feature
+
+A feature is not complete until automated tests cover each of its acceptance scenarios, including
+the error paths. Tests MUST be committed in the same change as the behavior they verify, and the
+full test suite MUST pass before a feature is considered done.
+
+Rationale: untested behavior is unverified behavior; shipping tests with the feature keeps the spec,
+code and tests aligned.
+
+## Quality Gates
+
+- The full test suite MUST pass against the test database before a feature is considered done.
+- Every acceptance scenario in a feature spec MUST map to at least one automated test.
+- Every new dependency MUST appear in the plan with its justification (Principle IV).
+- Every endpoint MUST appear in the generated OpenAPI document with request and response models
+  (Principle I).
+
+## Development Workflow
+
+- Features follow the Spec Kit flow: specify, clarify, plan, tasks, implement, converge.
+- Specifications describe what and why; technology choices belong in the plan.
+- Plans MUST pass a constitution check before tasks are generated; any violation MUST be recorded
+  with its justification in the plan's complexity tracking.
+- A feature is complete when `/speckit-converge` reports Converged and the test suite passes.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes other project practices. Amendments are made with
+`/speckit-constitution`, recorded in version control, and versioned semantically: MAJOR for removing
+or redefining a principle, MINOR for adding a principle or materially expanding guidance, PATCH for
+clarifications. Every plan and review MUST verify compliance with these principles; deviations
+require written justification in the plan.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-21
