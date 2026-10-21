@@ -1,0 +1,130 @@
+openapi: 3.1.0
+info:
+  title: Bookmarks API
+  version: 0.1.0
+  description: >
+    Save, list, filter and delete bookmarks. Single user, no authentication.
+    The running service generates its own OpenAPI document at /openapi.json from the
+    Pydantic models; this file is the design contract those models must match.
+paths:
+  /bookmarks:
+    post:
+      summary: Save a bookmark
+      operationId: createBookmark
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookmarkCreate' }
+      responses:
+        '201':
+          description: Bookmark saved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Bookmark' }
+        '409':
+          description: The normalized link is already bookmarked; details.existing_id names it
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '422':
+          description: Invalid link, title or tags
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    get:
+      summary: List bookmarks, newest first, optionally filtered by tag
+      operationId: listBookmarks
+      parameters:
+        - name: tag
+          in: query
+          required: false
+          schema: { type: string, maxLength: 30 }
+          description: Only bookmarks carrying this tag (normalized like tags)
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        '200':
+          description: A page of bookmarks
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookmarkPage' }
+        '422':
+          description: Invalid tag, limit or offset
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /bookmarks/{bookmark_id}:
+    delete:
+      summary: Delete a bookmark
+      operationId: deleteBookmark
+      parameters:
+        - name: bookmark_id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: No bookmark with this id
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '422':
+          description: The id is not a positive integer
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+components:
+  schemas:
+    BookmarkCreate:
+      type: object
+      required: [url, title]
+      additionalProperties: false
+      properties:
+        url: { type: string, maxLength: 2048, description: http or https link with a host }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        tags:
+          type: array
+          maxItems: 10
+          default: []
+          items: { type: string, description: 'Trimmed and lowercased; must match ^[a-z0-9-]{1,30}$' }
+    Bookmark:
+      type: object
+      required: [id, url, title, tags, created_at]
+      properties:
+        id: { type: integer }
+        url: { type: string, description: The link as the user gave it }
+        title: { type: string }
+        tags: { type: array, items: { type: string }, description: Normalized, unique, sorted }
+        created_at: { type: string, format: date-time }
+    BookmarkPage:
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Bookmark' } }
+        total: { type: integer, description: Number of bookmarks matching the filter }
+        limit: { type: integer }
+        offset: { type: integer }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [validation_error, not_found, duplicate_url, internal_error]
+            message: { type: string }
+            details:
+              description: Extra information, e.g. field errors or existing_id
+              type: [object, array, 'null']
