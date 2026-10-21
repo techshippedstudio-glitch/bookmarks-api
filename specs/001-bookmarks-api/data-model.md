@@ -1,7 +1,8 @@
 # Data Model: Bookmarks API
 
 One table holds everything the feature needs. Tags are stored on the bookmark as a normalized
-array (see [research.md](research.md), "Tags storage and filtering").
+array (see [research.md](research.md), "Tags storage and filtering"). What the spec calls the
+bookmark's "link" is the `url` field in the API and the database.
 
 ## Table `bookmarks`
 
