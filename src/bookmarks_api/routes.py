@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Path, Query, Response, status
 from pydantic import AfterValidator
 from sqlalchemy.orm import Session
 
@@ -65,6 +65,8 @@ def list_bookmarks(
     summary="Delete a bookmark",
     responses={404: {"model": ErrorResponse, "description": "No bookmark with this id."}, **ERROR_422},
 )
-def delete_bookmark(bookmark_id: int, session: SessionDep) -> Response:
+def delete_bookmark(
+    bookmark_id: Annotated[int, Path(ge=1, description="The bookmark's id.")], session: SessionDep
+) -> Response:
     repository.delete_bookmark(session, bookmark_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

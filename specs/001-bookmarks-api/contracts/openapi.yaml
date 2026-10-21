@@ -93,8 +93,10 @@ components:
         title: { type: string, minLength: 1, maxLength: 200 }
         tags:
           type: array
-          maxItems: 10
           default: []
+          description: >
+            At most 10 tags after normalization (trim, lowercase) and de-duplication,
+            so 11 raw tags that collapse to 10 are accepted.
           items: { type: string, description: 'Trimmed and lowercased; must match ^[a-z0-9-]{1,30}$' }
     Bookmark:
       type: object

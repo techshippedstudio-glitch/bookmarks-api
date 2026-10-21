@@ -194,6 +194,6 @@ Task: "BookmarkCreate / Bookmark in src/bookmarks_api/schemas.py"               
 
 ## Phase 8: Convergence
 
-- [ ] T029 Require `bookmark_id >= 1` on `DELETE /bookmarks/{bookmark_id}` in `src/bookmarks_api/routes.py` so 0 and negative ids return 422 `validation_error`, with a test in `tests/integration/test_delete_bookmark.py`, per contracts/openapi.yaml (contradicts)
-- [ ] T030 Align `specs/001-bookmarks-api/contracts/openapi.yaml` so the 10-tag limit applies after normalization and de-duplication, matching data-model.md, per FR-011 (contradicts)
-- [ ] T031 Run the full test suite on Python 3.11 and 3.12 and fix any incompatibility, per plan: Technical Context (partial)
+- [X] T029 Require `bookmark_id >= 1` on `DELETE /bookmarks/{bookmark_id}` in `src/bookmarks_api/routes.py` so 0 and negative ids return 422 `validation_error`, with a test in `tests/integration/test_delete_bookmark.py`, per contracts/openapi.yaml (contradicts)
+- [X] T030 Align `specs/001-bookmarks-api/contracts/openapi.yaml` so the 10-tag limit applies after normalization and de-duplication, matching data-model.md, per FR-011 (contradicts)
+- [X] T031 Run the full test suite on Python 3.11 and 3.12 and fix any incompatibility, per plan: Technical Context (partial)

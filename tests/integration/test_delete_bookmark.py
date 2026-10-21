@@ -1,5 +1,6 @@
 """User Story 4 - Delete a bookmark (spec.md, scenarios 1 to 3)."""
 
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -48,8 +49,9 @@ def test_link_can_be_saved_again_after_delete(client: TestClient) -> None:
     assert response.json()["id"] != first
 
 
-def test_non_numeric_id_is_a_validation_error(client: TestClient) -> None:
-    response = client.delete("/bookmarks/abc")
+@pytest.mark.parametrize("bad_id", ["abc", "0", "-5"])
+def test_invalid_id_is_a_validation_error(client: TestClient, bad_id: str) -> None:
+    response = client.delete(f"/bookmarks/{bad_id}")
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "validation_error"
