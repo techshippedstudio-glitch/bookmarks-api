@@ -5,6 +5,7 @@ made from tag `ep03-start` by three spec persistence models, two runs each, plus
 
 - `metrics.md`: per-run time, agent tokens, tests, analyze and converge results, and how each was measured.
 - `drift-score.md`: the blind drift test (5 questions, answered from each branch's `specs/` only).
+- `brief.md`: the episode brief, with the five blind-test questions fixed before any run.
 - `drift-answers/<code>.md`: every evaluator's raw answers; `drift-codes.txt` maps codes to branches.
 - `evaluator-prompt.md`: the evaluator prompt used for every code.
 - `race-check.md`, `race_http.py`: the save-while-deleted probe and its output on every branch.
