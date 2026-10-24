@@ -6,14 +6,15 @@ from sqlalchemy import delete, func, select, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from bookmarks_api.errors import DuplicateUrlError, NotFoundError
+from bookmarks_api.errors import NotFoundError
 from bookmarks_api.models import BookmarkRow
 from bookmarks_api.normalize import normalize_url
 from bookmarks_api.schemas import BookmarkCreate
 
 
-def create_bookmark(session: Session, data: BookmarkCreate) -> BookmarkRow:
-    """Insert a bookmark, or raise DuplicateUrlError if its normalized link already exists.
+def create_bookmark(session: Session, data: BookmarkCreate) -> tuple[BookmarkRow, bool]:
+    """Insert a bookmark and return (row, True), or return (existing row, False) if its
+    normalized link is already saved. The existing bookmark is not modified.
 
     ON CONFLICT DO NOTHING relies on the unique index, so this holds under concurrent saves.
     """
@@ -27,12 +28,12 @@ def create_bookmark(session: Session, data: BookmarkCreate) -> BookmarkRow:
     row = session.scalars(statement).one_or_none()
     if row is None:
         session.rollback()
-        existing_id = session.scalar(
-            select(BookmarkRow.id).where(BookmarkRow.url_normalized == normalized)
-        )
-        raise DuplicateUrlError(existing_id)
+        existing = session.scalars(
+            select(BookmarkRow).where(BookmarkRow.url_normalized == normalized)
+        ).one()
+        return existing, False
     session.commit()
-    return row
+    return row, True
 
 
 def list_bookmarks(
