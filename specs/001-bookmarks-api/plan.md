@@ -1,6 +1,6 @@
 # Implementation Plan: Bookmarks API
 
-**Branch**: `001-bookmarks-api` | **Date**: 2026-10-21 | **Spec**: [spec.md](spec.md)
+**Branch**: `001-bookmarks-api` | **Date**: 2026-10-21 (revised 2026-10-24: duplicate saves) | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `/specs/001-bookmarks-api/spec.md`
 
@@ -13,7 +13,15 @@ with no duplicate links after normalization. Built as a FastAPI service with Pyd
 response models, PostgreSQL storage through SQLAlchemy 2.0 (sync, psycopg 3), and Alembic
 migrations. Uniqueness is enforced by a unique index on the normalized link, so it holds under
 concurrent saves; tags are a normalized `text[]` column with a GIN index for filtering. All errors
-use one JSON envelope. Tests run with pytest against the real `bookmarks_test` database from the
+use one JSON envelope.
+
+Saving a link that is already bookmarked is not an error (spec FR-004, change of 2026-10-24):
+`POST /bookmarks` returns 201 Created with the new bookmark when it inserts a row, and 200 OK with
+the existing bookmark, unchanged, when the normalized link is already stored; the request's title
+and tags are ignored in that case. The insert still uses `ON CONFLICT (url_normalized) DO NOTHING`,
+so two concurrent saves of the same new link store one row: one caller gets 201, the other reads
+the winner's row and gets 200 with the same bookmark (research.md, "Preventing duplicate links").
+The 409 `duplicate_url` response is removed from the contract and the code. Tests run with pytest against the real `bookmarks_test` database from the
 existing `docker-compose.yml`.
 
 ## Technical Context
@@ -49,13 +57,19 @@ under a second for 100k bookmarks (indexed queries)
 | --- | --- | --- |
 | I. Typed API Contracts | Pydantic models for the create request, bookmark, page and error responses; FastAPI generates OpenAPI from them; no untyped dicts cross the boundary | Pass |
 | II. Real-Database Testing | Integration tests hit `bookmarks_test` on real PostgreSQL; schema created by running the Alembic migrations; tables truncated before each test; no database mocks | Pass |
-| III. Consistent Error Shape | One envelope `{"error": {"code", "message", "details"}}` for validation (422), not found (404) and duplicate (409), installed as global exception handlers | Pass |
+| III. Consistent Error Shape | One envelope `{"error": {"code", "message", "details"}}` for validation (422), not found (404) and other HTTP errors, installed as global exception handlers. A repeat save is now a success (200 with the existing bookmark), so the endpoints no longer produce a 409; the principle's status mapping still holds for every error that remains | Pass |
 | IV. Minimal Dependencies | Six runtime/test dependencies, each justified in research.md; standard library used for link normalization and config | Pass |
 | V. Tests Ship With Every Feature | Each user story's tasks include tests for its acceptance scenarios; suite must pass before converge | Pass |
 | VI. Cursor Pagination | `GET /bookmarks` uses keyset paging on `(created_at, id)` with an opaque `next_cursor`; no offset in the API or queries; a test pages through all results while bookmarks are added between requests | Pass |
 
 Post-design re-check (after Phase 1): Pass. The data model, contract and quickstart introduce no
 new dependencies or untyped interfaces.
+
+Re-check for the duplicate-save change (2026-10-24): Pass. No new dependency (IV); the 200 response
+reuses the typed `Bookmark` model and is declared in the contract and the generated OpenAPI (I);
+the remaining errors keep the envelope (III); the repeat-save and concurrent-save behavior is
+verified against the real test database (II, V); paging is untouched (VI). No schema migration is
+needed: the unique index on `url_normalized` already provides the guarantee.
 
 ## Project Structure
 
@@ -90,9 +104,9 @@ src/bookmarks_api/
 ├── models.py            # SQLAlchemy table mapping
 ├── schemas.py           # Pydantic request/response models
 ├── normalize.py         # link and tag normalization (pure functions)
-├── errors.py            # error envelope, domain exceptions and handlers
-├── repository.py        # queries: create, list/filter with total, delete
-└── routes.py            # /bookmarks endpoints
+├── errors.py            # error envelope, domain exceptions (not found) and handlers
+├── repository.py        # queries: create-or-get-existing, list/filter with total, delete
+└── routes.py            # /bookmarks endpoints (POST: 201 new, 200 existing)
 
 tests/
 ├── conftest.py          # test database setup (migrations, truncate per test), API client

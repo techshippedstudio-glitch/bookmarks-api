@@ -35,13 +35,32 @@ considered.
 
 ## Preventing duplicate links
 
-- **Decision**: Store the link as given (`url`) and a normalized form (`url_normalized`) with a
-  unique index. Insert with `INSERT ... ON CONFLICT (url_normalized) DO NOTHING RETURNING ...`; if
-  nothing is returned, look up the existing row and raise a duplicate error carrying its id.
+- **Decision** (revised 2026-10-24 for the duplicate-save change in FR-004): Store the link as
+  given (`url`) and a normalized form (`url_normalized`) with a unique index. Insert with
+  `INSERT ... ON CONFLICT (url_normalized) DO NOTHING RETURNING ...`. If a row is returned, it is a
+  new bookmark: commit and respond 201 Created. If nothing is returned, the link is already saved:
+  end the transaction, select the existing row by `url_normalized` in a new statement and return it
+  unchanged with 200 OK; the request's title and tags are discarded. If that select finds nothing
+  (the existing bookmark was deleted between the two statements), retry the insert once; the retry
+  either inserts (201) or finds the row (200).
 - **Rationale**: The database guarantees uniqueness even when two saves race (spec edge case);
-  `ON CONFLICT` avoids relying on catching exceptions mid-transaction.
+  `ON CONFLICT` avoids relying on catching exceptions mid-transaction. Under PostgreSQL's default
+  READ COMMITTED isolation, an `ON CONFLICT DO NOTHING` insert that hits a row being inserted by a
+  concurrent, uncommitted transaction waits for that transaction to finish; once the winner
+  commits, the loser's follow-up select (a new statement, so a new snapshot) sees the winner's row.
+  So two concurrent saves of a new link give exactly one row, one 201 and one 200 carrying the same
+  bookmark. The stored row is never written on a repeat save, so its title, tags and saved time
+  stay as they were.
 - **Alternatives considered**: check-then-insert in application code (races under concurrency);
-  catching `IntegrityError` (works, but leaves the transaction aborted and is noisier).
+  catching `IntegrityError` (works, but leaves the transaction aborted and is noisier);
+  `ON CONFLICT DO UPDATE SET url_normalized = EXCLUDED.url_normalized RETURNING *, (xmax = 0)` to
+  get the row and the inserted flag in one statement (rejected: it rewrites the existing row on
+  every repeat save, taking a row lock and leaving a dead tuple even though no value changes, and
+  `xmax = 0` relies on an undocumented system column); a dedicated "get or create" endpoint
+  (rejected: the change request keeps `POST /bookmarks`).
+- **History**: The original decision (2026-10-21) raised a duplicate error carrying the existing
+  id, returned as 409 `duplicate_url` with `details.existing_id`. The 2026-10-24 change replaces
+  that with 200 and the existing bookmark.
 
 ## Link normalization
 
@@ -84,7 +103,8 @@ considered.
 ## Error envelope
 
 - **Decision**: `{"error": {"code": str, "message": str, "details": object | null}}`. Codes:
-  `validation_error` (422), `not_found` (404), `duplicate_url` (409, `details.existing_id`).
+  `validation_error` (422), `not_found` (404). (`duplicate_url` (409, `details.existing_id`) was
+  removed on 2026-10-24: a repeat save now succeeds with 200; see "Preventing duplicate links".)
   FastAPI's `RequestValidationError` and `HTTPException` handlers are replaced so framework errors
   use the same shape; unexpected errors return 500 `internal_error` without internals.
 - **Rationale**: Constitution III.

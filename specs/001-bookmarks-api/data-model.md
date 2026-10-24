@@ -55,5 +55,8 @@ Examples: `HTTPS://Example.com:443/docs/#intro` → `https://example.com/docs`;
 ## Lifecycle
 
 A bookmark is created by a save and removed by a delete; there is no update in this version.
+Saving a link whose normalized form is already stored does not create or change anything: the
+existing row is returned as it is (FR-004), so its title, tags and `created_at` never change after
+the first save.
 Deleting a bookmark frees its normalized link, so the same link can be saved again (User Story 4,
 scenario 3).
