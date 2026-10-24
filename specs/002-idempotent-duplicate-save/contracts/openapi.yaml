@@ -1,0 +1,85 @@
+openapi: 3.1.0
+info:
+  title: Bookmarks API - idempotent duplicate save (delta)
+  version: 0.2.0
+  description: >
+    Delta contract for specs/002-idempotent-duplicate-save. It defines only the POST /bookmarks
+    operation, which supersedes the same operation in
+    specs/001-bookmarks-api/contracts/openapi.yaml: the 409 duplicate_url response is removed
+    and a 200 response returning the existing bookmark is added. GET /bookmarks and
+    DELETE /bookmarks/{bookmark_id} are unchanged and remain defined by the 001 contract.
+    The running service generates its own OpenAPI document at /openapi.json from the Pydantic
+    models; this file is the design contract those models must match.
+paths:
+  /bookmarks:
+    post:
+      summary: Save a bookmark
+      operationId: createBookmark
+      description: >
+        Saves a link. If the link, after normalization, is already bookmarked, nothing is
+        written and the existing bookmark is returned unchanged with 200; the title and tags in
+        the request are ignored. Request validation runs first in both cases.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookmarkCreate' }
+      responses:
+        '201':
+          description: Bookmark saved (the normalized link was not bookmarked yet)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Bookmark' }
+        '200':
+          description: >
+            The normalized link is already bookmarked; the existing bookmark is returned
+            unchanged and the request's title and tags are ignored
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Bookmark' }
+        '422':
+          description: Invalid link, title or tags
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+components:
+  schemas:
+    BookmarkCreate:
+      type: object
+      required: [url, title]
+      additionalProperties: false
+      properties:
+        url: { type: string, maxLength: 2048, description: http or https link with a host }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        tags:
+          type: array
+          default: []
+          description: >
+            At most 10 tags after normalization (trim, lowercase) and de-duplication,
+            so 11 raw tags that collapse to 10 are accepted.
+          items: { type: string, description: 'Trimmed and lowercased; must match ^[a-z0-9-]{1,30}$' }
+    Bookmark:
+      type: object
+      required: [id, url, title, tags, created_at]
+      properties:
+        id: { type: integer }
+        url: { type: string, description: The link as the user first gave it }
+        title: { type: string }
+        tags: { type: array, items: { type: string }, description: Normalized, unique, sorted }
+        created_at: { type: string, format: date-time }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: duplicate_url is no longer produced (removed by this feature)
+              enum: [validation_error, not_found, internal_error]
+            message: { type: string }
+            details:
+              description: Extra information, e.g. field errors
+              type: [object, array, 'null']
