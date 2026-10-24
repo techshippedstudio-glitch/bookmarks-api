@@ -64,17 +64,17 @@ and the table holds one row with the original title and tags.
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T001 [P] [US1] In `tests/integration/test_create_bookmark.py`, replace `test_equivalent_link_is_rejected_as_duplicate` with `test_equivalent_link_returns_existing_bookmark_with_200`: save `https://example.com/docs` (title "Docs"), then `HTTPS://Example.com/docs/#intro` (title "Other title", tags `["x"]`); assert the second status is 200, its JSON equals the first response's JSON (same `id`, `url`, `title`, `tags`, `created_at`), and `row_count() == 1` (spec US1 AC1, FR-002)
-- [ ] T002 [P] [US1] In `tests/integration/test_create_bookmark.py`, replace `test_duplicate_leaves_the_existing_bookmark_unchanged` with `test_duplicate_save_ignores_title_and_tags_and_changes_nothing`: save `https://example.com/docs` with title "Docs" and tags `["ref"]`, then save `https://example.com/docs` with title "Other" and tags `["x", "y"]`; assert 200 with title "Docs" and tags `["ref"]`, and that the stored row (read with the `engine` fixture: `url`, `title`, `tags`, `created_at`) is identical before and after (spec US1 AC2, FR-003)
-- [ ] T003 [P] [US1] In `tests/integration/test_create_bookmark.py`, change `test_concurrent_saves_of_the_same_link_leave_one_bookmark` to collect status and JSON for both threads and assert `sorted(statuses) == [200, 201]`, both bodies have the same `id`, and `row_count() == 1` (spec US1 AC4, FR-005)
-- [ ] T004 [P] [US1] In `tests/integration/test_create_bookmark.py`, add `test_resave_after_delete_creates_new_bookmark_with_201` (save, delete, save again → 201 with a new id) and `test_different_query_string_is_a_new_bookmark` (`https://example.com/search?q=a` then `?q=b` → both 201, two rows) (spec Edge Cases, US1 AC3)
-- [ ] T005 [P] [US1] In `tests/integration/test_errors.py`, remove `test_duplicate_error_envelope`; add `test_duplicate_save_is_not_an_error` asserting a duplicate save returns 200 with a `Bookmark` body (no `error` key); in `test_openapi_documents_every_operation`, change the POST error codes from `{"409", "422"}` to `{"422"}`, assert `"409" not in` the POST responses, and assert both `"200"` and `"201"` responses reference `/Bookmark` (spec FR-007, Constitution I)
+- [X] T001 [P] [US1] In `tests/integration/test_create_bookmark.py`, replace `test_equivalent_link_is_rejected_as_duplicate` with `test_equivalent_link_returns_existing_bookmark_with_200`: save `https://example.com/docs` (title "Docs"), then `HTTPS://Example.com/docs/#intro` (title "Other title", tags `["x"]`); assert the second status is 200, its JSON equals the first response's JSON (same `id`, `url`, `title`, `tags`, `created_at`), and `row_count() == 1` (spec US1 AC1, FR-002)
+- [X] T002 [P] [US1] In `tests/integration/test_create_bookmark.py`, replace `test_duplicate_leaves_the_existing_bookmark_unchanged` with `test_duplicate_save_ignores_title_and_tags_and_changes_nothing`: save `https://example.com/docs` with title "Docs" and tags `["ref"]`, then save `https://example.com/docs` with title "Other" and tags `["x", "y"]`; assert 200 with title "Docs" and tags `["ref"]`, and that the stored row (read with the `engine` fixture: `url`, `title`, `tags`, `created_at`) is identical before and after (spec US1 AC2, FR-003)
+- [X] T003 [P] [US1] In `tests/integration/test_create_bookmark.py`, change `test_concurrent_saves_of_the_same_link_leave_one_bookmark` to collect status and JSON for both threads and assert `sorted(statuses) == [200, 201]`, both bodies have the same `id`, and `row_count() == 1` (spec US1 AC4, FR-005)
+- [X] T004 [P] [US1] In `tests/integration/test_create_bookmark.py`, add `test_resave_after_delete_creates_new_bookmark_with_201` (save, delete, save again → 201 with a new id) and `test_different_query_string_is_a_new_bookmark` (`https://example.com/search?q=a` then `?q=b` → both 201, two rows) (spec Edge Cases, US1 AC3)
+- [X] T005 [P] [US1] In `tests/integration/test_errors.py`, remove `test_duplicate_error_envelope`; add `test_duplicate_save_is_not_an_error` asserting a duplicate save returns 200 with a `Bookmark` body (no `error` key); in `test_openapi_documents_every_operation`, change the POST error codes from `{"409", "422"}` to `{"422"}`, assert `"409" not in` the POST responses, and assert both `"200"` and `"201"` responses reference `/Bookmark` (spec FR-007, Constitution I)
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] In `src/bookmarks_api/repository.py`, change `create_bookmark(session, data)` to return `tuple[BookmarkRow, bool]` (row, created): keep `INSERT ... ON CONFLICT (url_normalized) DO NOTHING RETURNING`; on insert commit and return `(row, True)`; when nothing is inserted, roll back, `SELECT` the row by `url_normalized` and return `(existing, False)` without writing to it; if the lookup finds nothing (deleted in between), retry the insert, at most 3 attempts (research.md "Returning the existing bookmark", "Concurrent saves"). Remove the `DuplicateUrlError` import and update the docstring
-- [ ] T007 [US1] In `src/bookmarks_api/routes.py`, make `POST /bookmarks` take a `Response` parameter, unpack `(row, created)` from `repository.create_bookmark`, set `response.status_code = 200` when not created (default stays 201), and replace the `409` entry in `responses=` with `200: {"model": Bookmark, "description": "This link was already saved; the existing bookmark is returned unchanged."}` plus `**ERROR_422` (depends on T006; contracts/openapi.yaml)
-- [ ] T008 [US1] In `src/bookmarks_api/errors.py`, delete the `DuplicateUrlError` class and its `handle_duplicate` exception handler; keep `409: "conflict"` in `STATUS_CODES` (research.md "Removing the duplicate error") (depends on T006)
+- [X] T006 [US1] In `src/bookmarks_api/repository.py`, change `create_bookmark(session, data)` to return `tuple[BookmarkRow, bool]` (row, created): keep `INSERT ... ON CONFLICT (url_normalized) DO NOTHING RETURNING`; on insert commit and return `(row, True)`; when nothing is inserted, roll back, `SELECT` the row by `url_normalized` and return `(existing, False)` without writing to it; if the lookup finds nothing (deleted in between), retry the insert, at most 3 attempts (research.md "Returning the existing bookmark", "Concurrent saves"). Remove the `DuplicateUrlError` import and update the docstring
+- [X] T007 [US1] In `src/bookmarks_api/routes.py`, make `POST /bookmarks` take a `Response` parameter, unpack `(row, created)` from `repository.create_bookmark`, set `response.status_code = 200` when not created (default stays 201), and replace the `409` entry in `responses=` with `200: {"model": Bookmark, "description": "This link was already saved; the existing bookmark is returned unchanged."}` plus `**ERROR_422` (depends on T006; contracts/openapi.yaml)
+- [X] T008 [US1] In `src/bookmarks_api/errors.py`, delete the `DuplicateUrlError` class and its `handle_duplicate` exception handler; keep `409: "conflict"` in `STATUS_CODES` (research.md "Removing the duplicate error") (depends on T006)
 
 **Checkpoint**: User Story 1 is fully functional; `uv run --python 3.13 pytest -q tests/integration/test_create_bookmark.py tests/integration/test_errors.py` passes.
 
@@ -90,11 +90,11 @@ title, 11 tags, or tag `"no spaces"`; each returns 422 `validation_error` and th
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T009 [US2] In `tests/integration/test_create_bookmark.py`, add a parametrized `test_invalid_resave_of_existing_link_is_rejected` (title `"t" * 201`; 11 tags `t0..t10`; tag `"no spaces"`): save `https://example.com/docs` first, then the invalid payload for the same link; assert 422 with code `validation_error`, `row_count() == 1`, and the stored title unchanged (spec US2 AC1, FR-006)
+- [X] T009 [US2] In `tests/integration/test_create_bookmark.py`, add a parametrized `test_invalid_resave_of_existing_link_is_rejected` (title `"t" * 201`; 11 tags `t0..t10`; tag `"no spaces"`): save `https://example.com/docs` first, then the invalid payload for the same link; assert 422 with code `validation_error`, `row_count() == 1`, and the stored title unchanged (spec US2 AC1, FR-006)
 
 ### Implementation for User Story 2
 
-- [ ] T010 [US2] Confirm no code change is needed: `BookmarkCreate` in `src/bookmarks_api/schemas.py` validates the body before the route runs; T009 must pass with T006 to T008 in place (research.md "Validation order")
+- [X] T010 [US2] Confirm no code change is needed: `BookmarkCreate` in `src/bookmarks_api/schemas.py` validates the body before the route runs; T009 must pass with T006 to T008 in place (research.md "Validation order")
 
 **Checkpoint**: User Stories 1 and 2 both pass independently.
 
@@ -104,10 +104,10 @@ title, 11 tags, or tag `"no spaces"`; each returns 422 `validation_error` and th
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T011 [P] In `README.md`, change the `POST /bookmarks` row of the endpoint table from "409 if the link is already saved" to "201 for a new link; 200 with the existing bookmark, unchanged, if the link is already saved"
-- [ ] T012 Grep `src/` and `tests/` for `DuplicateUrlError`, `duplicate_url` and `409` and confirm none remain for saving (only the generic `409: "conflict"` mapping in `src/bookmarks_api/errors.py`)
-- [ ] T013 Run the full suite on all supported versions: `uv run --python 3.11 pytest -q`, `uv run --python 3.12 pytest -q`, `uv run --python 3.13 pytest -q` (with `.env` loaded); all must pass (Constitution V, Quality Gates)
-- [ ] T014 Run the manual checks in `specs/002-idempotent-duplicate-save/quickstart.md` (steps 1 to 5, including `/openapi.json` listing 200, 201 and 422 for `POST /bookmarks` and no 409)
+- [X] T011 [P] In `README.md`, change the `POST /bookmarks` row of the endpoint table from "409 if the link is already saved" to "201 for a new link; 200 with the existing bookmark, unchanged, if the link is already saved"
+- [X] T012 Grep `src/` and `tests/` for `DuplicateUrlError`, `duplicate_url` and `409` and confirm none remain for saving (only the generic `409: "conflict"` mapping in `src/bookmarks_api/errors.py`)
+- [X] T013 Run the full suite on all supported versions: `uv run --python 3.11 pytest -q`, `uv run --python 3.12 pytest -q`, `uv run --python 3.13 pytest -q` (with `.env` loaded); all must pass (Constitution V, Quality Gates)
+- [X] T014 Run the manual checks in `specs/002-idempotent-duplicate-save/quickstart.md` (steps 1 to 5, including `/openapi.json` listing 200, 201 and 422 for `POST /bookmarks` and no 409)
 
 ---
 
