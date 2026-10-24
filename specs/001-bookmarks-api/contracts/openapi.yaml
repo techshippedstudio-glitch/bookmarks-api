@@ -129,7 +129,7 @@ components:
           properties:
             code:
               type: string
-              enum: [validation_error, not_found, internal_error]
+              enum: [validation_error, not_found, method_not_allowed, bad_request, http_error, internal_error]
             message: { type: string }
             details:
               description: Extra information, e.g. field errors

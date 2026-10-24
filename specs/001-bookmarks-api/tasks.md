@@ -234,3 +234,8 @@ strategy (research, plan) and the contract; the change was made in code first an
 - [X] T041 [P] Update `tests/integration/test_errors.py`: drop the 409 envelope test and assert `/openapi.json` documents `POST /bookmarks` with 201 and 200 `Bookmark` responses, 422 `ErrorResponse`, and no 409 (SC-005, Constitution I)
 - [X] T042 [P] Update the `POST /bookmarks` row in `README.md` and step 2 of `specs/001-bookmarks-api/quickstart.md` to describe 200 with the existing bookmark instead of 409
 - [X] T043 [US1] After T040, add a test in `tests/integration/test_create_bookmark.py` for the spec edge case "the existing bookmark is deleted while a save of the same link is in progress": the conflicting row is deleted between the insert and the lookup, and the save stores a new bookmark with 201 (FR-004, research.md "Preventing duplicate links")
+
+## Phase 11: Convergence
+
+- [X] T044 Add `method_not_allowed`, `bad_request` and `http_error` to the ErrorResponse `code` enum in `specs/001-bookmarks-api/contracts/openapi.yaml` so it lists every code `src/bookmarks_api/errors.py` emits, per plan: contracts/openapi.yaml and Constitution III (contradicts)
+- [X] T045 Remove the unused HTTP 409 → `conflict` entry from `STATUS_CODES` in `src/bookmarks_api/errors.py`, since no response is a 409 after the revised duplicate rule, per FR-004 and plan: Constitution Check III (unrequested)
