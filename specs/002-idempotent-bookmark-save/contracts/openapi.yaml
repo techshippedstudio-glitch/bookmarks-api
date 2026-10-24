@@ -1,0 +1,62 @@
+openapi: 3.1.0
+info:
+  title: Bookmarks API — idempotent save (feature 002)
+  version: 0.2.0
+  description: >
+    Contract delta for specs/002-idempotent-bookmark-save. It supersedes the POST /bookmarks
+    operation of specs/001-bookmarks-api/contracts/openapi.yaml: the 409 duplicate_url response is
+    removed and a 200 response returns the existing bookmark unchanged. All other operations and
+    schemas are unchanged and remain defined in the 001 contract, which is referenced here.
+    The running service generates its own OpenAPI document at /openapi.json from the Pydantic
+    models; this file is the design contract those models must match.
+paths:
+  /bookmarks:
+    post:
+      summary: Save a bookmark
+      description: >
+        Idempotent per normalized link. A link that is not yet bookmarked is stored and returned
+        with 201. A link whose normalized form is already bookmarked returns the existing bookmark,
+        unchanged, with 200; the title and tags in the request are ignored. Concurrent first saves
+        of the same link store one bookmark: one request gets 201, the other 200 with the same
+        bookmark. The request is validated in both cases.
+      operationId: createBookmark
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '../../001-bookmarks-api/contracts/openapi.yaml#/components/schemas/BookmarkCreate' }
+      responses:
+        '201':
+          description: Bookmark saved (the link was not bookmarked before)
+          content:
+            application/json:
+              schema: { $ref: '../../001-bookmarks-api/contracts/openapi.yaml#/components/schemas/Bookmark' }
+        '200':
+          description: This link was already bookmarked; the existing bookmark is returned unchanged
+          content:
+            application/json:
+              schema: { $ref: '../../001-bookmarks-api/contracts/openapi.yaml#/components/schemas/Bookmark' }
+        '422':
+          description: Invalid link, title or tags (also on a re-save)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+components:
+  schemas:
+    ErrorResponse:
+      description: >
+        Same envelope as the 001 contract; the duplicate_url code no longer exists.
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [validation_error, not_found, internal_error]
+            message: { type: string }
+            details:
+              description: Extra information, e.g. field errors
+              type: [object, array, 'null']
