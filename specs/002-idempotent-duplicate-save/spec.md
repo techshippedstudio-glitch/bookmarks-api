@@ -12,16 +12,18 @@
 
 - **Builds on**: [specs/001-bookmarks-api](../001-bookmarks-api/spec.md) (Bookmarks API). That
   feature directory is a finished historical record and is not edited.
-- **Supersedes**: the duplicate rule in **FR-004** of `specs/001-bookmarks-api` — the sentence "A
-  save of an existing link MUST be rejected with a conflict error that includes the existing
-  bookmark's identifier" — together with the parts of 001 that restate it (User Story 1 acceptance
-  scenario 3, the first Edge Case bullet, and the first Clarification of Session 2026-10-21). Those
-  are replaced by FR-001 to FR-003 below.
-- **Unchanged from 001**: the rest of FR-004 still applies — the system MUST NOT store two
+- **Supersedes**: the duplicate rule in **001 FR-004** of `specs/001-bookmarks-api` — the sentence
+  "A save of an existing link MUST be rejected with a conflict error that includes the existing
+  bookmark's identifier" — together with the parts of 001 that restate it (001 User Story 1
+  acceptance scenario 3, 001's first Edge Case bullet, and 001's first Clarification of Session
+  2026-10-21). Those are replaced by FR-001 to FR-006 below.
+- **Unchanged from 001**: the rest of 001 FR-004 still applies — the system MUST NOT store two
   bookmarks for the same link, links are compared after the existing normalization rules (scheme
   and host lowercased, default port removed, trailing path slash removed, fragment removed, query
   kept), and the guarantee holds when two saves happen at the same moment. All other 001
-  requirements (FR-001 to FR-003 and FR-005 to FR-011) are unchanged.
+  requirements (001 FR-001 to 001 FR-003 and 001 FR-005 to 001 FR-011) are unchanged.
+- **Requirement IDs**: in this spec, "001 FR-###" always means a requirement of
+  `specs/001-bookmarks-api`; an unprefixed "FR-###" means a requirement of this spec.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -98,7 +100,7 @@ bookmark is stored.
 - **FR-001**: When a user saves a link whose normalized form matches an existing bookmark (using
   the normalization rules of 001 FR-004), the system MUST return the existing bookmark with a
   200 OK success response instead of rejecting the save. This supersedes the duplicate rule in
-  FR-004 of `specs/001-bookmarks-api`.
+  001 FR-004 of `specs/001-bookmarks-api`.
 - **FR-002**: On such a duplicate save the system MUST ignore the title and tags sent in the
   request and MUST NOT modify the stored bookmark in any way (identifier, link, title, tags and
   saved time stay the same).
@@ -107,7 +109,7 @@ bookmark is stored.
 - **FR-004**: The system MUST continue to store at most one bookmark per normalized link, even when
   saves of the same new link happen at the same moment; in that case exactly one save MUST receive
   201 Created and every other MUST receive 200 OK with the same bookmark.
-- **FR-005**: Request validation (link, title and tag rules of 001 FR-002 and FR-011) MUST still be
+- **FR-005**: Request validation (link, title and tag rules of 001 FR-002 and 001 FR-011) MUST still be
   applied to every save, including a save of a link that is already bookmarked.
 - **FR-006**: The published API description MUST document both success outcomes of a save (201 for
   a new bookmark, 200 for an existing one) and MUST no longer list a conflict error for the save

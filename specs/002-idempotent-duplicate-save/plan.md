@@ -55,7 +55,7 @@ before the duplicate check (spec FR-005)
 | II. Real-Database Testing | New and changed tests run against `bookmarks_test`; the concurrency test uses two real connections racing on the real unique index | Pass |
 | III. Consistent Error Shape | Fewer error cases: the duplicate case is no longer an error. Remaining errors (422, 404, 405, 500) keep the envelope. The principle's mention of 409 lists an allowed class, it does not require one to exist | Pass |
 | IV. Minimal Dependencies | No new dependencies | Pass |
-| V. Tests Ship With Every Feature | Every acceptance scenario of spec US1 and US2 maps to a test in the same change; old 409 assertions are replaced, not deleted silently | Pass |
+| V. Tests Ship With Every Feature | Every acceptance scenario of spec US1 and US2 maps to a test in the same change; old 409 assertions in the create and concurrency tests are replaced by 200 assertions, and the duplicate-envelope test in `test_errors.py` is removed explicitly because that error no longer exists; the retry path for a bookmark deleted mid-save gets its own real-database test | Pass |
 | VI. Cursor Pagination | No list endpoint changes; a duplicate save does not change `created_at`, so keyset positions are unaffected | Pass |
 
 Post-design re-check (after Phase 1): Pass. The contract adds a 200 response using the existing
