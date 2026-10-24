@@ -225,3 +225,7 @@ Task: "BookmarkCreate / Bookmark in src/bookmarks_api/schemas.py"               
 
 - [X] T037 [US1] Flow-back record for FR-004: an already-saved link returns the existing bookmark unchanged with 200 instead of 409 `duplicate_url`; implemented and tested as now described in T008, T012, T015, T016 and T026 (`src/bookmarks_api/errors.py`, `repository.py`, `routes.py`; `tests/integration/test_create_bookmark.py`, `test_errors.py`)
 - [X] T038 [US1] Handle a save racing a delete of the same link (found by /speckit-analyze, finding U1): in `create_bookmark` in `src/bookmarks_api/repository.py`, when the conflicting row is gone before it is read, retry the insert (at most 3 attempts) so the link is saved as new with 201; real-database test `test_save_racing_a_delete_of_the_same_link_saves_a_new_bookmark` in `tests/integration/test_create_bookmark.py`, per spec Edge Cases
+
+## Phase 11: Convergence
+
+- [X] T039 Add `method_not_allowed` to the `ErrorResponse.error.code` enum in `specs/001-bookmarks-api/contracts/openapi.yaml`, which the 405 handler in `src/bookmarks_api/errors.py` emits and `tests/integration/test_errors.py` asserts, per FR-010 (contradicts)
