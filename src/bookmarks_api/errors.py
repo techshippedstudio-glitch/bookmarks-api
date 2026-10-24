@@ -32,7 +32,7 @@ class NotFoundError(Exception):
         self.message = message
 
 
-STATUS_CODES = {400: "bad_request", 404: "not_found", 405: "method_not_allowed", 409: "conflict"}
+STATUS_CODES = {400: "bad_request", 404: "not_found", 405: "method_not_allowed"}
 
 
 def error_response(status: int, code: str, message: str, details: Any = None) -> JSONResponse:

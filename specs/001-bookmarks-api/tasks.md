@@ -222,3 +222,7 @@ Task: "BookmarkCreate / Bookmark in src/bookmarks_api/schemas.py"               
   `ON CONFLICT DO NOTHING` guarantees one row under races, without catching exceptions
   mid-transaction). The 2026-10-24 spec change keeps that mechanism and replaces the 409 with 200
   and the existing bookmark (now T008, T012, T015, T016, T028).
+
+## Phase 8: Convergence
+
+- [X] T031 Remove the unused `409: "conflict"` entry from `STATUS_CODES` in `src/bookmarks_api/errors.py`, since no endpoint produces a 409 after the duplicate-save change, per plan: Constitution Check III (unrequested)
