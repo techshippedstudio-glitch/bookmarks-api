@@ -210,3 +210,126 @@ code diff (main.py) and artifact diff (openapi.yaml, tasks.md) above are consist
 other. Extension hooks after implement: none.
 
 Round end: 2026-10-24T12:10:35Z
+
+# Converge round 2
+
+Round start: 2026-10-24T12:10:36Z
+
+```console
+$ test -f .specify/extensions.yml && cat .specify/extensions.yml || echo 'no .specify/extensions.yml (before_converge hooks skipped)'
+no .specify/extensions.yml (before_converge hooks skipped)
+[exit 0]
+```
+
+```console
+$ .specify/scripts/bash/check-prerequisites.sh --json --require-spec --require-tasks --include-tasks
+{"FEATURE_DIR":"/home/claude/runs/living-r2/specs/001-bookmarks-api","AVAILABLE_DOCS":["research.md","data-model.md","contracts/","quickstart.md","tasks.md"]}
+[exit 0]
+```
+
+```console
+$ sha256sum specs/001-bookmarks-api/tasks.md
+ac5116b250eba6f701cfab7193cdb839c3628510c8b6cabba2da496aea5e9c76  specs/001-bookmarks-api/tasks.md
+[exit 0]
+```
+
+```console
+$ grep -rn -E 'version|STATUS_CODES|http_error|status_code|HTTP_20' src/bookmarks_api/main.py src/bookmarks_api/errors.py src/bookmarks_api/routes.py; grep -n -E 'version:|enum:|200|201|409' specs/001-bookmarks-api/contracts/openapi.yaml
+src/bookmarks_api/main.py:12:        version="0.2.0",
+src/bookmarks_api/errors.py:35:STATUS_CODES = {400: "bad_request", 404: "not_found", 405: "method_not_allowed", 409: "conflict"}
+src/bookmarks_api/errors.py:40:    return JSONResponse(status_code=status, content=jsonable_encoder(body))
+src/bookmarks_api/errors.py:64:        code = STATUS_CODES.get(exc.status_code, "http_error")
+src/bookmarks_api/errors.py:65:        return error_response(exc.status_code, code, str(exc.detail))
+src/bookmarks_api/routes.py:40:    status_code=status.HTTP_201_CREATED,
+src/bookmarks_api/routes.py:55:        response.status_code = status.HTTP_200_OK
+src/bookmarks_api/routes.py:95:    status_code=status.HTTP_204_NO_CONTENT,
+src/bookmarks_api/routes.py:104:    return Response(status_code=status.HTTP_204_NO_CONTENT)
+4:  version: 0.2.0
+15:        Idempotent per normalized link (FR-004). A new link is stored and returned with 201.
+17:        with 200; the title and tags in the request are ignored and nothing is modified. Two
+18:        concurrent saves of the same new link store one bookmark: one gets 201, the other 200
+26:        '200':
+31:        '201':
+60:        '200':
+100:        title: { type: string, minLength: 1, maxLength: 200 }
+135:              enum: [validation_error, not_found, internal_error, bad_request, method_not_allowed, conflict, http_error]
+[exit 0]
+```
+
+## Converge round 2 — findings (verbatim)
+
+Same intent inventory as round 1 plus T031-T032 (Phase 8). Re-checked F1 (app version now 0.2.0
+= contract 0.2.0) and F2 (contract enum now lists every code errors.py emits:
+validation_error, not_found, internal_error, bad_request, method_not_allowed, conflict,
+http_error). Re-checked the revised FR-004 path (repository → route → OpenAPI → tests) and the
+untouched stories (keyset paging, tag filter, delete) against spec, plan, tasks and constitution.
+
+## Convergence Findings
+
+No findings.
+
+**Summary metrics:**
+
+- Requirements / acceptance criteria checked: 11 FR + 4 SC + 15 acceptance scenarios + 8 edge cases
+- Plan decisions checked: 10
+- Constitution principles checked: 6 (I-VI)
+- Findings by gap type: missing 0 / partial 0 / contradicts 0 / unrequested 0
+- Findings by severity: CRITICAL 0, HIGH 0, MEDIUM 0, LOW 0
+
+**✅ Converged — the implementation satisfies the spec, plan, and tasks.**
+
+tasks.md left byte-for-byte unchanged (sha256 before and after below).
+Next action: proceed to review / PR; no further implement pass needed.
+Extension hooks after converge: none (no `.specify/extensions.yml`).
+
+```console
+$ sha256sum specs/001-bookmarks-api/tasks.md; git status --short
+ac5116b250eba6f701cfab7193cdb839c3628510c8b6cabba2da496aea5e9c76  specs/001-bookmarks-api/tasks.md
+ M episodes/ep03/capture/living-r2/06-converge.md
+[exit 0]
+```
+
+## Final full-suite runs (end of run)
+
+```console
+$ uv run --python 3.11 pytest -q 2>&1 | grep -v UV_NATIVE | tail -1
+98 passed in 3.47s
+[exit 0]
+```
+
+```console
+$ uv run --python 3.12 pytest -q 2>&1 | grep -v UV_NATIVE | tail -1
+98 passed in 3.68s
+[exit 0]
+```
+
+```console
+$ uv run --python 3.13 pytest -q 2>&1 | grep -v UV_NATIVE | tail -1
+98 passed in 3.66s
+[exit 0]
+```
+
+```console
+$ git diff --stat ep03-start..HEAD -- . ':(exclude)episodes'
+ README.md                                          |  2 +-
+ specs/001-bookmarks-api/checklists/requirements.md |  5 ++
+ specs/001-bookmarks-api/contracts/openapi.yaml     | 24 ++++--
+ specs/001-bookmarks-api/data-model.md              |  5 +-
+ specs/001-bookmarks-api/plan.md                    | 29 +++++--
+ specs/001-bookmarks-api/quickstart.md              |  4 +-
+ specs/001-bookmarks-api/research.md                | 31 +++++--
+ specs/001-bookmarks-api/spec.md                    | 38 ++++++---
+ specs/001-bookmarks-api/tasks.md                   | 98 ++++++++++++----------
+ src/bookmarks_api/errors.py                        | 11 ---
+ src/bookmarks_api/main.py                          |  2 +-
+ src/bookmarks_api/repository.py                    | 34 +++++---
+ src/bookmarks_api/routes.py                        | 15 +++-
+ tests/integration/test_create_bookmark.py          | 79 +++++++++++++----
+ tests/integration/test_errors.py                   | 18 ++--
+ 15 files changed, 256 insertions(+), 139 deletions(-)
+[exit 0]
+```
+
+Converge summary: round 1 appended 2 tasks (LOW 2: 1 partial, 1 contradicts); implement round 2 completed them; round 2 converged (0 findings). 2 of max 3 rounds used.
+
+End: 2026-10-24T12:11:17Z
