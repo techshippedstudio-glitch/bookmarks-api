@@ -5,6 +5,7 @@ from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import event, text
 
 
 def test_save_with_title_and_no_tags(client: TestClient, row_count) -> None:
@@ -87,6 +88,44 @@ def test_concurrent_saves_of_the_same_link_leave_one_bookmark(client: TestClient
 
     assert sorted(response.status_code for response in responses) == [200, 201]
     assert responses[0].json() == responses[1].json()
+    assert row_count() == 1
+
+
+def test_save_while_the_existing_bookmark_is_deleted_creates_a_new_one(
+    engine, session_factory, row_count
+) -> None:
+    """Edge case: the conflicting row is deleted between the insert and the lookup."""
+    from bookmarks_api import repository
+    from bookmarks_api.schemas import BookmarkCreate
+
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO bookmarks (url, url_normalized, title) "
+                "VALUES ('https://example.com/gone', 'https://example.com/gone', 'Old')"
+            )
+        )
+
+    session = session_factory()
+    deleted = []
+
+    @event.listens_for(session, "do_orm_execute")
+    def delete_before_lookup(state) -> None:
+        if state.is_select and not deleted:
+            with engine.begin() as connection:
+                connection.execute(text("DELETE FROM bookmarks"))
+            deleted.append(True)
+
+    try:
+        row, created = repository.create_bookmark(
+            session, BookmarkCreate(url="https://example.com/gone/", title="New")
+        )
+    finally:
+        session.close()
+
+    assert deleted == [True]
+    assert created is True
+    assert row.title == "New"
     assert row_count() == 1
 
 

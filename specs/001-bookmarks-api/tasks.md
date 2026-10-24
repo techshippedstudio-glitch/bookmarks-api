@@ -84,7 +84,7 @@ link returns 200 with the existing bookmark, unchanged.
 **Goal**: A user can list bookmarks newest first, in pages, with a total count.
 
 **Independent Test**: `GET /bookmarks` returns saved bookmarks newest first with `total`, `limit`
-and `offset`.
+and `next_cursor` (Constitution VI; no offset).
 
 > Note (constitution v1.1.0): T017-T020 built offset paging, which Principle VI now forbids. Corrective
 > tasks are appended by /speckit-converge; these tasks are kept as history.
@@ -162,6 +162,8 @@ again returns 404.
   use the US1 endpoint; US3 extends the US2 endpoint; US4 is independent of US2 and US3 except for
   its "absent from list" check
 - **Polish (Phase 7)**: Depends on all user stories
+- **Convergence and flow-back (Phases 8 to 10)**: Depend on Phases 1 to 7. In Phase 10, T037
+  (repository) comes before T038 (route) and T039 (errors); T040 to T043 test the result
 
 ### Within Each User Story
 
@@ -174,6 +176,8 @@ again returns 404.
 - US1: T011, T012, T013 and T014 in parallel (different files)
 - US2: T017 and T018 in parallel
 - Polish: T026 and T027 in parallel
+- Phase 10: T040, T041 and T042 in parallel once T037 to T039 are done (different files); T043
+  follows T040 because both edit `tests/integration/test_create_bookmark.py`
 
 ## Parallel Example: User Story 1
 
@@ -225,7 +229,8 @@ strategy (research, plan) and the contract; the change was made in code first an
 
 - [X] T037 [US1] Change `create_bookmark(session, data)` in `src/bookmarks_api/repository.py` to return `(row, created)`: keep `INSERT ... ON CONFLICT (url_normalized) DO NOTHING RETURNING`; when nothing is inserted, select and return the existing row with `created=False`, without modifying it; if that row was deleted between the insert and the select, retry the insert (FR-004, research.md "Preventing duplicate links")
 - [X] T038 [US1] Make `POST /bookmarks` in `src/bookmarks_api/routes.py` return 201 with `Bookmark` for a new link and 200 with the existing `Bookmark` otherwise; declare 201, 200 and 422 in OpenAPI and no 409, per contracts/openapi.yaml
-- [X] T039 [P] Remove `DuplicateUrlError` and its 409 `duplicate_url` handler from `src/bookmarks_api/errors.py` (no longer raised), per research.md "Error envelope"
+- [X] T039 Remove `DuplicateUrlError` and its 409 `duplicate_url` handler from `src/bookmarks_api/errors.py` (no longer raised), per research.md "Error envelope"; after T037, which removes the last import of `DuplicateUrlError`
 - [X] T040 [P] [US1] Update `tests/integration/test_create_bookmark.py` for User Story 1 scenario 3 and the concurrency edge case: an equivalent link sent with a different title and tags → 200 with a body equal to the first save, stored url, title and tags unchanged, still one row; two concurrent saves of equivalent links → one 201 and one 200 with the same body, one row (FR-004)
 - [X] T041 [P] Update `tests/integration/test_errors.py`: drop the 409 envelope test and assert `/openapi.json` documents `POST /bookmarks` with 201 and 200 `Bookmark` responses, 422 `ErrorResponse`, and no 409 (SC-005, Constitution I)
 - [X] T042 [P] Update the `POST /bookmarks` row in `README.md` and step 2 of `specs/001-bookmarks-api/quickstart.md` to describe 200 with the existing bookmark instead of 409
+- [X] T043 [US1] After T040, add a test in `tests/integration/test_create_bookmark.py` for the spec edge case "the existing bookmark is deleted while a save of the same link is in progress": the conflicting row is deleted between the insert and the lookup, and the save stores a new bookmark with 201 (FR-004, research.md "Preventing duplicate links")

@@ -15,7 +15,7 @@
 - Q: When someone saves a link that is already bookmarked, what should happen? → A: Reject it with a conflict error that includes the existing bookmark's identifier; the existing bookmark is left unchanged. *(Superseded 2026-10-24; see the flow-back session below.)*
 - Q: Which links count as "the same link"? → A: Links that match after normalization: scheme and host lowercased, default port removed, trailing slash on the path removed, fragment (#...) removed; the query string is kept as is.
 - Q: How should tags be cleaned up and limited? → A: Trim spaces, lowercase, drop duplicates; 1 to 30 characters of letters, digits and hyphens; at most 10 tags per bookmark.
-- Q: How should the list behave when there are many bookmarks? → A: Return pages: 20 per page by default, up to 100 per page, using a limit and an offset, plus the total count.
+- Q: How should the list behave when there are many bookmarks? → A: Return pages: 20 per page by default, up to 100 per page, using a limit and an offset, plus the total count. *(Superseded by the constitution v1.1.0 session below.)*
 - Q: How long can a title and a link be? → A: Title 1 to 200 characters; link at most 2048 characters.
 
 ### Session 2026-10-21 (constitution v1.1.0)
@@ -139,6 +139,8 @@ appears in the list.
   than letters, digits and hyphens is rejected.
 - Two saves of the same new link at the same moment still leave exactly one bookmark: one save gets
   201 Created and the other gets 200 OK with that same bookmark.
+- If the existing bookmark is deleted while a save of the same link is in progress, the save stores
+  a new bookmark and returns 201 Created (as after any delete, User Story 4 scenario 3).
 - A malformed next-page token (one that does not decode to a position in the list) is rejected with
   a validation error.
 - A request that sends the removed offset option is rejected with a validation error that names the
