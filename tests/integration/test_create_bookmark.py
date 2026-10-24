@@ -37,36 +37,125 @@ def test_link_is_stored_as_given(client: TestClient) -> None:
     assert response.json()["url"] == "HTTPS://Example.com/Docs/"
 
 
-def test_equivalent_link_is_rejected_as_duplicate(client: TestClient, row_count) -> None:
-    first = client.post("/bookmarks", json={"url": "https://example.com/docs", "title": "Docs"})
+def test_equivalent_link_returns_existing_bookmark(client: TestClient, row_count) -> None:
+    first = client.post(
+        "/bookmarks",
+        json={"url": "https://example.com/docs", "title": "Docs", "tags": ["python"]},
+    )
     second = client.post(
         "/bookmarks",
-        json={"url": "HTTPS://Example.com/docs/#intro", "title": "Other title", "tags": ["x"]},
+        json={"url": "HTTPS://Example.com/docs/#intro", "title": "Other", "tags": ["misc"]},
     )
 
-    assert second.status_code == 409
-    error = second.json()["error"]
-    assert error["code"] == "duplicate_url"
-    assert error["details"] == {"existing_id": first.json()["id"]}
+    assert first.status_code == 201
+    assert second.status_code == 200
+    assert second.json() == first.json()
+    body = second.json()
+    assert body["url"] == "https://example.com/docs"
+    assert body["title"] == "Docs"
+    assert body["tags"] == ["python"]
     assert row_count() == 1
 
 
 def test_duplicate_leaves_the_existing_bookmark_unchanged(client: TestClient, engine) -> None:
-    client.post("/bookmarks", json={"url": "https://example.com/docs", "title": "Docs"})
-    client.post("/bookmarks", json={"url": "https://example.com/docs/", "title": "Changed"})
+    payload = {"url": "https://example.com/docs", "title": "Docs", "tags": ["python"]}
+    original = client.post("/bookmarks", json=payload).json()
+    client.post("/bookmarks", json={"url": "https://example.com/newer", "title": "Newer"})
+    order_before = [item["id"] for item in client.get("/bookmarks").json()["items"]]
 
+    same = client.post("/bookmarks", json=payload)
+    changed = client.post(
+        "/bookmarks",
+        json={"url": "https://example.com/docs/", "title": "Changed", "tags": ["other"]},
+    )
+
+    assert same.status_code == 200
+    assert changed.status_code == 200
+    assert same.json() == original
+    assert changed.json() == original
     with engine.connect() as connection:
-        title = connection.exec_driver_sql("SELECT title FROM bookmarks").scalar_one()
+        title, tags, created_at = connection.exec_driver_sql(
+            "SELECT title, tags, created_at FROM bookmarks WHERE id = %s", (original["id"],)
+        ).one()
     assert title == "Docs"
+    assert tags == ["python"]
+    assert created_at == datetime.fromisoformat(original["created_at"])
+    order_after = [item["id"] for item in client.get("/bookmarks").json()["items"]]
+    assert order_before == order_after
+    assert order_after[-1] == original["id"]
+
+
+def test_different_query_string_is_a_new_bookmark(client: TestClient, row_count) -> None:
+    first = client.post("/bookmarks", json={"url": "https://example.com/docs?a=1", "title": "A"})
+    second = client.post("/bookmarks", json={"url": "https://example.com/docs?a=2", "title": "B"})
+
+    assert second.status_code == 201
+    assert second.json()["id"] != first.json()["id"]
+    assert row_count() == 2
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        pytest.param({"title": "t" * 201}, id="title-over-200"),
+        pytest.param({"tags": ["no spaces"]}, id="invalid-tag"),
+    ],
+)
+def test_invalid_duplicate_save_is_still_rejected(
+    client: TestClient, engine, row_count, changes: dict
+) -> None:
+    original = client.post(
+        "/bookmarks", json={"url": "https://example.com/docs", "title": "Docs"}
+    ).json()
+
+    response = client.post(
+        "/bookmarks", json={"url": "https://example.com/docs", "title": "Docs", **changes}
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
+    assert row_count() == 1
+    with engine.connect() as connection:
+        title, tags = connection.exec_driver_sql(
+            "SELECT title, tags FROM bookmarks WHERE id = %s", (original["id"],)
+        ).one()
+    assert (title, tags) == ("Docs", [])
+
+
+def test_bookmark_deleted_mid_save_is_saved_as_new(
+    client: TestClient, engine, row_count, monkeypatch
+) -> None:
+    from bookmarks_api import repository
+
+    gone = client.post("/bookmarks", json={"url": "https://example.com/gone", "title": "Gone"})
+    gone_id = gone.json()["id"]
+    original_find = repository._find_existing
+    calls = {"count": 0}
+
+    def delete_then_find(session, normalized):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            with engine.begin() as connection:
+                connection.exec_driver_sql("DELETE FROM bookmarks WHERE id = %s", (gone_id,))
+        return original_find(session, normalized)
+
+    monkeypatch.setattr(repository, "_find_existing", delete_then_find)
+    response = client.post("/bookmarks", json={"url": "https://example.com/gone", "title": "Again"})
+
+    assert response.status_code == 201
+    assert response.json()["id"] != gone_id
+    assert response.json()["title"] == "Again"
+    assert calls["count"] == 1
+    assert row_count() == 1
 
 
 def test_concurrent_saves_of_the_same_link_leave_one_bookmark(client: TestClient, row_count) -> None:
-    statuses: list[int] = []
+    responses: list = []
     barrier = threading.Barrier(2)
 
     def save(url: str) -> None:
         barrier.wait()
-        statuses.append(client.post("/bookmarks", json={"url": url, "title": "Race"}).status_code)
+        responses.append(client.post("/bookmarks", json={"url": url, "title": "Race"}))
 
     threads = [
         threading.Thread(target=save, args=("https://example.com/race",)),
@@ -77,7 +166,8 @@ def test_concurrent_saves_of_the_same_link_leave_one_bookmark(client: TestClient
     for thread in threads:
         thread.join()
 
-    assert sorted(statuses) == [201, 409]
+    assert sorted(response.status_code for response in responses) == [200, 201]
+    assert responses[0].json()["id"] == responses[1].json()["id"]
     assert row_count() == 1
 
 
