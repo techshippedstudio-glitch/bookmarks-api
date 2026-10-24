@@ -35,3 +35,8 @@
 - The Edge Cases section lists open behavior questions (duplicate handling, link equivalence, tag
   normalization, limits, large lists). They have reasonable defaults but materially affect
   behavior, so they are the focus for `/speckit-clarify` before `/speckit-plan`.
+- 2026-10-24 (duplicate-save change request): FR-004, US1 scenario 3 and two edge cases name
+  HTTP status codes (200 OK for an already saved link, 201 Created for a new one). This is a
+  deliberate exception to "No implementation details": the change request defines the rule in
+  those terms, and API clients depend on telling "created" from "already saved". Everything else
+  in the spec stays implementation-free.

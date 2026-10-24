@@ -15,7 +15,7 @@
 - Q: When someone saves a link that is already bookmarked, what should happen? → A: Reject it with a conflict error that includes the existing bookmark's identifier; the existing bookmark is left unchanged. *(Superseded 2026-10-24 by the change request below; see FR-004.)*
 - Q: Which links count as "the same link"? → A: Links that match after normalization: scheme and host lowercased, default port removed, trailing slash on the path removed, fragment (#...) removed; the query string is kept as is.
 - Q: How should tags be cleaned up and limited? → A: Trim spaces, lowercase, drop duplicates; 1 to 30 characters of letters, digits and hyphens; at most 10 tags per bookmark.
-- Q: How should the list behave when there are many bookmarks? → A: Return pages: 20 per page by default, up to 100 per page, using a limit and an offset, plus the total count.
+- Q: How should the list behave when there are many bookmarks? → A: Return pages: 20 per page by default, up to 100 per page, using a limit and an offset, plus the total count. *(Paging superseded by the constitution v1.1.0 session below: next-page token, no offset.)*
 - Q: How long can a title and a link be? → A: Title 1 to 200 characters; link at most 2048 characters.
 
 ### Session 2026-10-21 (constitution v1.1.0)
@@ -169,7 +169,7 @@ appears in the list.
   exactly one bookmark is stored, one save gets 201 Created and the other gets 200 OK with the
   same bookmark.
 - **FR-005**: System MUST return the saved bookmark, including an identifier the user can use to
-  delete it.
+  delete it (for a link that was already saved, this is the existing bookmark; see FR-004).
 - **FR-006**: System MUST list bookmarks ordered by saved time, most recent first, in pages of 20
   by default and at most 100, and MUST include the total number of matching bookmarks. Each page
   MUST return an opaque next-page token (none on the last page), and paging with it MUST NOT repeat
