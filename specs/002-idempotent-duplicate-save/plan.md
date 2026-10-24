@@ -4,11 +4,13 @@
 
 **Input**: Feature specification from `/specs/002-idempotent-duplicate-save/spec.md`
 
-**Supersedes**: the duplicate rule in FR-004 of [specs/001-bookmarks-api](../001-bookmarks-api/spec.md);
+**Supersedes**: the duplicate rule in 001 FR-004 (FR-004 of [specs/001-bookmarks-api](../001-bookmarks-api/spec.md));
 the 409 response of `POST /bookmarks` in
 [specs/001-bookmarks-api/contracts/openapi.yaml](../001-bookmarks-api/contracts/openapi.yaml) is
 replaced by the 200 response in [contracts/openapi.yaml](contracts/openapi.yaml). The
-`specs/001-bookmarks-api` folder is a historical record and is not edited.
+`specs/001-bookmarks-api` folder is a historical record and is not edited; every statement there
+that this feature replaces is listed in
+[Superseded statements](#superseded-statements-in-specs001-bookmarks-api) below.
 
 **Note**: This template is filled in by the `/speckit-plan` command; its definition describes the execution workflow.
 
@@ -102,3 +104,23 @@ files listed above change.
 ## Complexity Tracking
 
 No constitution violations to justify.
+
+## Superseded statements in specs/001-bookmarks-api
+
+`specs/001-bookmarks-api` is immutable, so these lines still describe the old 409 behavior. Each
+is replaced by the 002 artifact named on the right. Lines not listed (normalization, uniqueness
+index, tags, paging, delete) remain in force.
+
+| 001 location | Old statement (summary) | Replaced by |
+| --- | --- | --- |
+| spec.md:L15 (Clarifications) | Duplicate save → reject with conflict error incl. existing id | spec.md FR-002, FR-003 |
+| spec.md:L44-46 (US1 AC3) | Equivalent link → conflict error incl. existing id | spec.md US1 AC1 |
+| spec.md:L125-127 (Edge Cases) | Duplicate with other title/tags → conflict error | spec.md US1 AC2, Edge Cases |
+| spec.md:L152-156 (FR-004) | Save of existing link MUST be rejected with conflict error | spec.md FR-001 (uniqueness kept), FR-002, FR-005 |
+| plan.md:L52 (Constitution III row) | Envelope used for "duplicate (409)" | plan.md Constitution Check III |
+| research.md:L36-40 ("Preventing duplicate links") | On no insert, raise a duplicate error carrying its id | research.md §1 |
+| research.md:L86-87 ("Error envelope") | Codes include `duplicate_url` (409, `details.existing_id`) | research.md §3 |
+| contracts/openapi.yaml:L25-29 | `POST /bookmarks` `409` response | contracts/openapi.yaml `200` response |
+| contracts/openapi.yaml:L129, L132 | `duplicate_url` in error code enum; `existing_id` in details | contracts/openapi.yaml `ErrorResponse` |
+| quickstart.md:L39 (step 2) | Re-save → 409 `duplicate_url` | quickstart.md steps 1-3 |
+| tasks.md T008, T012, T015, T016, T026 | `DuplicateUrlError`, 409 tests, 409 route response | tasks.md T002-T007 |

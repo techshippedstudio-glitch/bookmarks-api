@@ -25,6 +25,8 @@ request is rejected with 422 `validation_error` in both cases.
 
 ## Superseded rule
 
-`specs/001-bookmarks-api/data-model.md` and that spec's FR-004 describe a save of an existing link
-as rejected with 409 `duplicate_url` and `details.existing_id`. That rejection is replaced by the
+001 FR-004, `specs/001-bookmarks-api/research.md` ("Preventing duplicate links", "Error
+envelope") and `specs/001-bookmarks-api/contracts/openapi.yaml` describe a save of an existing link
+as rejected with 409 `duplicate_url` and `details.existing_id`
+(`specs/001-bookmarks-api/data-model.md` itself only names `url_normalized` as the duplicate key). That rejection is replaced by the
 "Existing" outcome above (spec FR-002). The uniqueness rule itself is unchanged.

@@ -13,7 +13,11 @@ design choices the change request leaves open.
   `INSERT ... ON CONFLICT (url_normalized) DO NOTHING RETURNING *`. If it returns a row, commit and
   report `created=True` (201). If it returns nothing, end the transaction and `SELECT` the row by
   `url_normalized`, reporting `created=False` (200). If that `SELECT` finds nothing (the
-  conflicting row was deleted between the two statements), retry the insert; at most 3 attempts.
+  conflicting row was deleted between the two statements), retry the insert, which then normally
+  stores a new row (201, spec Edge Case "save racing a delete"). The loop is capped at 3 attempts as
+  a safety bound; only if a row with the same link is inserted and deleted again around every
+  attempt does the save fail with 500 `internal_error`. This is the one error path of the
+  feature and is considered practically unreachable for a single user.
 - **Rationale**: Under PostgreSQL's default READ COMMITTED isolation, a concurrent insert of the
   same key makes the second `INSERT ... ON CONFLICT` wait for the first transaction; once the first
   commits, the second does nothing, and a fresh `SELECT` (new snapshot) sees the committed row. So

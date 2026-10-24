@@ -8,13 +8,21 @@
 
 **Input**: User description: "Saving a link that is already bookmarked must no longer be rejected. If the link (after the existing normalization rules) is already saved, return the existing bookmark unchanged with HTTP 200 OK instead of the current 409 conflict. The title and tags sent in the new request are ignored; the stored bookmark is not modified. Saving a new link still returns 201 Created. Two concurrent saves of the same new link must still store only one bookmark (one gets 201, the other gets 200 with the same bookmark). This replaces the duplicate rule in FR-004 of specs/001-bookmarks-api."
 
-**Supersedes**: the duplicate rule in **FR-004** of [`specs/001-bookmarks-api/spec.md`](../001-bookmarks-api/spec.md)
+**Supersedes**: the duplicate rule in **001 FR-004** (FR-004 of [`specs/001-bookmarks-api/spec.md`](../001-bookmarks-api/spec.md))
 (and the matching Clarification "Q: When someone saves a link that is already bookmarked…",
 User Story 1 Acceptance Scenario 3 and the first Edge Case of that spec). Everything else in
-`specs/001-bookmarks-api` stays in force, including FR-004's normalization rules and its "never
-store two bookmarks for the same link" guarantee. `specs/001-bookmarks-api` is a finished,
+`specs/001-bookmarks-api` stays in force, including 001 FR-004's normalization rules and its "never
+store two bookmarks for the same link" guarantee. The full list of superseded statements across
+the 001 artifacts is in [plan.md](plan.md#superseded-statements-in-specs001-bookmarks-api). `specs/001-bookmarks-api` is a finished,
 historical record and is not edited; where the two specs disagree about saving an
 already-bookmarked link, this spec wins.
+
+**Requirement IDs**: FR-### and SC-### in this spec are local to this spec. Requirements of
+specs/001-bookmarks-api are always written with a `001` prefix (for example "001 FR-004").
+
+**Clarify step**: `/speckit-clarify` was not run for this feature; the change request left no open
+question (0 `[NEEDS CLARIFICATION]` markers) and the delivery order for this change is specify,
+plan, tasks, analyze, implement, converge.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -52,8 +60,8 @@ bookmark exactly as stored, and that only one bookmark exists.
 Two saves of the same, not-yet-bookmarked link arrive at the same moment (for example a client
 retrying while its first request is still in flight).
 
-**Why this priority**: The "never two bookmarks for one link" guarantee from FR-004 of
-specs/001-bookmarks-api must survive the change; only the response to the losing request changes.
+**Why this priority**: The "never two bookmarks for one link" guarantee from 001 FR-004
+must survive the change; only the response to the losing request changes.
 
 **Independent Test**: Fire two saves of the same new link at the same time and confirm exactly one
 gets HTTP 201 Created, the other gets HTTP 200 OK, both return the same bookmark identifier, and
@@ -82,6 +90,8 @@ exactly one bookmark is stored.
   the duplicate request.
 - After a bookmark is deleted, saving the same link again creates a new bookmark (HTTP 201
   Created), unchanged from specs/001-bookmarks-api.
+- If the existing bookmark is deleted at the same moment as a duplicate save of its link, the
+  save is treated as a save of a new link: it stores a new bookmark and returns HTTP 201 Created.
 - A duplicate save never produces a conflict error any more.
 
 ## Requirements *(mandatory)*
@@ -89,13 +99,13 @@ exactly one bookmark is stored.
 ### Functional Requirements
 
 - **FR-001**: System MUST NOT store two bookmarks for the same link, where links are compared
-  after the normalization rules of FR-004 in specs/001-bookmarks-api (scheme and host lowercased,
+  after the normalization rules of 001 FR-004 (scheme and host lowercased,
   default port removed, trailing path slash removed, fragment removed, query kept). This MUST
   hold even when two saves happen at the same moment.
 - **FR-002**: When a save's link (after normalization) matches an existing bookmark, the System
   MUST respond with success (HTTP 200 OK) and return the existing bookmark exactly as stored. It
-  MUST NOT return a conflict error. *(Replaces the duplicate rule in FR-004 of
-  specs/001-bookmarks-api, which required a conflict error.)*
+  MUST NOT return a conflict error. *(Replaces the duplicate rule in 001 FR-004,
+  which required a conflict error.)*
 - **FR-003**: When a save matches an existing bookmark, the System MUST ignore the title and tags
   sent in that save and MUST NOT modify the stored bookmark (identifier, link, title, tags and
   saved time all stay the same).
@@ -104,7 +114,7 @@ exactly one bookmark is stored.
 - **FR-005**: When two saves of the same new link happen at the same moment, exactly one MUST
   receive HTTP 201 Created and the other MUST receive HTTP 200 OK, and both MUST return the same
   bookmark.
-- **FR-006**: Save requests MUST still be validated (FR-002 and FR-011 of specs/001-bookmarks-api)
+- **FR-006**: Save requests MUST still be validated (001 FR-002 and 001 FR-011)
   before the duplicate check; an invalid request is rejected with a validation error whether or
   not its link is already saved.
 
@@ -136,5 +146,5 @@ exactly one bookmark is stored.
   validation is skipped).
 - The single-user scope, delete behavior, listing, paging and filtering of
   specs/001-bookmarks-api are unchanged.
-- The `conflict` error code may no longer be produced by any endpoint; the consistent error format
-  (Constitution III) is otherwise unchanged.
+- The `duplicate_url` error (the 409 conflict for a duplicate save) is no longer produced by any
+  endpoint; the consistent error format (Constitution III) is otherwise unchanged.
