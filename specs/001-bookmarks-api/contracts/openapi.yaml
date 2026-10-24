@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Bookmarks API
-  version: 0.1.0
+  version: 0.2.0
   description: >
     Save, list, filter and delete bookmarks. Single user, no authentication.
     The running service generates its own OpenAPI document at /openapi.json from the
@@ -9,24 +9,30 @@ info:
 paths:
   /bookmarks:
     post:
-      summary: Save a bookmark
+      summary: Save a bookmark, or return the existing one for an already saved link
       operationId: createBookmark
+      description: >
+        Idempotent per normalized link (FR-004). A new link is stored and returned with 201.
+        If the normalized link is already saved, the existing bookmark is returned unchanged
+        with 200; the title and tags in the request are ignored and nothing is modified. Two
+        concurrent saves of the same new link store one bookmark: one gets 201, the other 200
+        with the same bookmark.
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/BookmarkCreate' }
       responses:
-        '201':
-          description: Bookmark saved
+        '200':
+          description: The normalized link was already saved; the existing bookmark, unchanged
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Bookmark' }
-        '409':
-          description: The normalized link is already bookmarked; details.existing_id names it
+        '201':
+          description: Bookmark saved (new link)
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              schema: { $ref: '#/components/schemas/Bookmark' }
         '422':
           description: Invalid link, title or tags
           content:
@@ -126,8 +132,8 @@ components:
           properties:
             code:
               type: string
-              enum: [validation_error, not_found, duplicate_url, internal_error]
+              enum: [validation_error, not_found, internal_error]
             message: { type: string }
             details:
-              description: Extra information, e.g. field errors or existing_id
+              description: Extra information, e.g. field errors
               type: [object, array, 'null']

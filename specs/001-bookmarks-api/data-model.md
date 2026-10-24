@@ -10,7 +10,7 @@ bookmark's "link" is the `url` field in the API and the database.
 | --- | --- | --- | --- |
 | `id` | `bigint` | primary key, generated always as identity | Identifier returned to the user and used for delete |
 | `url` | `varchar(2048)` | not null | The link exactly as the user gave it |
-| `url_normalized` | `varchar(2048)` | not null, **unique** | Normalized link used for duplicate detection (FR-004) |
+| `url_normalized` | `varchar(2048)` | not null, **unique** | Normalized link used for duplicate detection; a save whose normalized link exists returns the existing row (FR-004) |
 | `title` | `varchar(200)` | not null, `char_length(title) >= 1` | Trimmed before saving |
 | `tags` | `text[]` | not null, default `'{}'`, `cardinality(tags) <= 10` | Normalized, de-duplicated, sorted |
 | `created_at` | `timestamptz` | not null, default `now()` | The saved time (FR-003) |
@@ -55,5 +55,8 @@ Examples: `HTTPS://Example.com:443/docs/#intro` → `https://example.com/docs`;
 ## Lifecycle
 
 A bookmark is created by a save and removed by a delete; there is no update in this version.
+Saving a link whose normalized form already exists does not create or change a row: the existing
+row is returned as it is, with 200 OK instead of 201 Created, and the request's title and tags are
+ignored (FR-004, revised 2026-10-24). No schema change is needed for this rule.
 Deleting a bookmark frees its normalized link, so the same link can be saved again (User Story 4,
 scenario 3).
