@@ -51,8 +51,9 @@ def _reject_offset(value: str | None) -> None:
     },
 )
 def create_bookmark(data: BookmarkCreate, session: SessionDep, response: Response) -> Bookmark:
-    """201 with the new bookmark, or 200 with the existing one if the link is already saved
-    (specs/002-idempotent-duplicate-save)."""
+    """Saves a link. If the link, after normalization, is already bookmarked, nothing is written
+    and the existing bookmark is returned unchanged with 200; the title and tags in the request
+    are ignored. Request validation runs first in both cases."""
     row, created = repository.create_bookmark(session, data)
     if not created:
         response.status_code = status.HTTP_200_OK

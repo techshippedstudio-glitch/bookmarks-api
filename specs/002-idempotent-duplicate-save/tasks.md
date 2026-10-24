@@ -156,6 +156,6 @@ Task: "Update envelope/OpenAPI tests in tests/integration/test_errors.py (T004)"
 
 ## Phase 6: Convergence
 
-- [ ] T012 Add an invalid-tag case (`{"url": "https://example.com/docs", "title": "Bad tag", "tags": ["no spaces"]}`) to `test_invalid_duplicate_is_still_a_validation_error` in `tests/integration/test_create_bookmark.py` per Edge Cases / FR-006 (partial)
-- [ ] T013 Assert the listed bookmark's tags are `["api"]` in `test_duplicate_ignores_title_and_tags_and_leaves_the_bookmark_unchanged` in `tests/integration/test_create_bookmark.py` per US1/AC2 (partial)
-- [ ] T014 Align the `create_bookmark` docstring in `src/bookmarks_api/routes.py` (published as the `POST /bookmarks` OpenAPI description) with the description in `specs/002-idempotent-duplicate-save/contracts/openapi.yaml` and drop the internal spec path per contracts/openapi.yaml, Constitution I (unrequested)
+- [X] T012 Add an invalid-tag case (`{"url": "https://example.com/docs", "title": "Bad tag", "tags": ["no spaces"]}`) to `test_invalid_duplicate_is_still_a_validation_error` in `tests/integration/test_create_bookmark.py` per Edge Cases / FR-006 (partial)
+- [X] T013 Assert the listed bookmark's tags are `["api"]` in `test_duplicate_ignores_title_and_tags_and_leaves_the_bookmark_unchanged` in `tests/integration/test_create_bookmark.py` per US1/AC2 (partial)
+- [X] T014 Align the `create_bookmark` docstring in `src/bookmarks_api/routes.py` (published as the `POST /bookmarks` OpenAPI description) with the description in `specs/002-idempotent-duplicate-save/contracts/openapi.yaml` and drop the internal spec path per contracts/openapi.yaml, Constitution I (unrequested)

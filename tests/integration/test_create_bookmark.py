@@ -78,6 +78,7 @@ def test_duplicate_ignores_title_and_tags_and_leaves_the_bookmark_unchanged(
     listing = client.get("/bookmarks").json()
     assert listing["total"] == 1
     assert [item["title"] for item in listing["items"]] == ["Docs"]
+    assert [item["tags"] for item in listing["items"]] == [["api"]]
 
 
 @pytest.mark.parametrize(
@@ -91,6 +92,10 @@ def test_duplicate_ignores_title_and_tags_and_leaves_the_bookmark_unchanged(
                 "tags": [f"t{i}" for i in range(11)],
             },
             id="eleven-tags",
+        ),
+        pytest.param(
+            {"url": "https://example.com/docs", "title": "Bad tag", "tags": ["no spaces"]},
+            id="invalid-tag",
         ),
     ],
 )
