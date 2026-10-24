@@ -132,7 +132,7 @@ components:
           properties:
             code:
               type: string
-              enum: [validation_error, not_found, internal_error]
+              enum: [validation_error, not_found, internal_error, bad_request, method_not_allowed, conflict, http_error]
             message: { type: string }
             details:
               description: Extra information, e.g. field errors

@@ -109,3 +109,104 @@ no .specify/extensions.yml (after_converge hooks skipped)
 ```
 
 Next action: run /speckit-implement for T031-T032, then converge again (round 2).
+
+# Implement round 2 (T031-T032)
+
+Round start: 2026-10-24T12:10:03Z
+
+```console
+$ test -f .specify/extensions.yml && cat .specify/extensions.yml || echo 'no .specify/extensions.yml (before_implement hooks skipped)'
+no .specify/extensions.yml (before_implement hooks skipped)
+[exit 0]
+```
+
+```console
+$ .specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks
+{"FEATURE_DIR":"/home/claude/runs/living-r2/specs/001-bookmarks-api","AVAILABLE_DOCS":["research.md","data-model.md","contracts/","quickstart.md","tasks.md"]}
+[exit 0]
+```
+
+```console
+$ for f in specs/001-bookmarks-api/checklists/*.md; do t=$(grep -c -E '^- \[( |x|X)\]' $f); c=$(grep -c -E '^- \[(x|X)\]' $f); echo "$(basename $f) total=$t checked=$c unchecked=$((t-c))"; done
+requirements.md total=16 checked=16 unchecked=0
+[exit 0]
+```
+
+```console
+$ git diff -- src specs
+diff --git a/specs/001-bookmarks-api/contracts/openapi.yaml b/specs/001-bookmarks-api/contracts/openapi.yaml
+index b4e8451..a5609ba 100644
+--- a/specs/001-bookmarks-api/contracts/openapi.yaml
++++ b/specs/001-bookmarks-api/contracts/openapi.yaml
+@@ -132,7 +132,7 @@ components:
+           properties:
+             code:
+               type: string
+-              enum: [validation_error, not_found, internal_error]
++              enum: [validation_error, not_found, internal_error, bad_request, method_not_allowed, conflict, http_error]
+             message: { type: string }
+             details:
+               description: Extra information, e.g. field errors
+diff --git a/specs/001-bookmarks-api/tasks.md b/specs/001-bookmarks-api/tasks.md
+index 23cfcfc..d649417 100644
+--- a/specs/001-bookmarks-api/tasks.md
++++ b/specs/001-bookmarks-api/tasks.md
+@@ -216,5 +216,5 @@ Task: "README POST row in README.md"
+ 
+ ## Phase 8: Convergence
+ 
+-- [ ] T031 Set the FastAPI app version in `src/bookmarks_api/main.py` to `0.2.0` so the generated OpenAPI matches `specs/001-bookmarks-api/contracts/openapi.yaml`, per plan: contract and Constitution I (partial)
+-- [ ] T032 Align the `ErrorResponse.error.code` enum in `specs/001-bookmarks-api/contracts/openapi.yaml` with every code `src/bookmarks_api/errors.py` emits (`validation_error`, `not_found`, `internal_error`, `bad_request`, `method_not_allowed`, `conflict`, `http_error`), per plan: contract and FR-010 (contradicts)
++- [X] T031 Set the FastAPI app version in `src/bookmarks_api/main.py` to `0.2.0` so the generated OpenAPI matches `specs/001-bookmarks-api/contracts/openapi.yaml`, per plan: contract and Constitution I (partial)
++- [X] T032 Align the `ErrorResponse.error.code` enum in `specs/001-bookmarks-api/contracts/openapi.yaml` with every code `src/bookmarks_api/errors.py` emits (`validation_error`, `not_found`, `internal_error`, `bad_request`, `method_not_allowed`, `conflict`, `http_error`), per plan: contract and FR-010 (contradicts)
+diff --git a/src/bookmarks_api/main.py b/src/bookmarks_api/main.py
+index 0489b10..833d86f 100644
+--- a/src/bookmarks_api/main.py
++++ b/src/bookmarks_api/main.py
+@@ -9,7 +9,7 @@ from bookmarks_api.routes import router
+ def create_app() -> FastAPI:
+     app = FastAPI(
+         title="Bookmarks API",
+-        version="0.1.0",
++        version="0.2.0",
+         description="Save, list, filter and delete bookmarks.",
+     )
+     install_error_handlers(app)
+[exit 0]
+```
+
+```console
+$ uv run --python 3.11 pytest -q 2>&1 | grep -v UV_NATIVE | tail -2
+..........................                                               [100%]
+98 passed in 3.21s
+[exit 0]
+```
+
+```console
+$ uv run --python 3.12 pytest -q 2>&1 | grep -v UV_NATIVE | tail -2
+..........................                                               [100%]
+98 passed in 3.46s
+[exit 0]
+```
+
+```console
+$ uv run --python 3.13 pytest -q 2>&1 | grep -v UV_NATIVE | tail -2
+..........................                                               [100%]
+98 passed in 3.28s
+[exit 0]
+```
+
+```console
+$ uv run --python 3.13 python -c "from bookmarks_api.main import app; print(app.openapi()['info'])" 2>&1 | grep -v UV_NATIVE; python3 -c "import yaml; d=yaml.safe_load(open('specs/001-bookmarks-api/contracts/openapi.yaml')); print(d['info']['version'], d['components']['schemas']['ErrorResponse']['properties']['error']['properties']['code']['enum'])"
+{'title': 'Bookmarks API', 'description': 'Save, list, filter and delete bookmarks.', 'version': '0.2.0'}
+0.2.0 ['validation_error', 'not_found', 'internal_error', 'bad_request', 'method_not_allowed', 'conflict', 'http_error']
+[exit 0]
+```
+
+Implement round 2 completion report: T031 (app version 0.2.0) and T032 (contract error-code enum)
+done and marked `[X]`; checklist gate PASS (16/16); no ignore-file changes; 98 passed on 3.11,
+3.12, 3.13; generated `/openapi.json` info.version is 0.2.0, matching the contract. Joint review:
+code diff (main.py) and artifact diff (openapi.yaml, tasks.md) above are consistent with each
+other. Extension hooks after implement: none.
+
+Round end: 2026-10-24T12:10:35Z

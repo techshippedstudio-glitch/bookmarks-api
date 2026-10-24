@@ -216,5 +216,5 @@ Task: "README POST row in README.md"                                            
 
 ## Phase 8: Convergence
 
-- [ ] T031 Set the FastAPI app version in `src/bookmarks_api/main.py` to `0.2.0` so the generated OpenAPI matches `specs/001-bookmarks-api/contracts/openapi.yaml`, per plan: contract and Constitution I (partial)
-- [ ] T032 Align the `ErrorResponse.error.code` enum in `specs/001-bookmarks-api/contracts/openapi.yaml` with every code `src/bookmarks_api/errors.py` emits (`validation_error`, `not_found`, `internal_error`, `bad_request`, `method_not_allowed`, `conflict`, `http_error`), per plan: contract and FR-010 (contradicts)
+- [X] T031 Set the FastAPI app version in `src/bookmarks_api/main.py` to `0.2.0` so the generated OpenAPI matches `specs/001-bookmarks-api/contracts/openapi.yaml`, per plan: contract and Constitution I (partial)
+- [X] T032 Align the `ErrorResponse.error.code` enum in `specs/001-bookmarks-api/contracts/openapi.yaml` with every code `src/bookmarks_api/errors.py` emits (`validation_error`, `not_found`, `internal_error`, `bad_request`, `method_not_allowed`, `conflict`, `http_error`), per plan: contract and FR-010 (contradicts)

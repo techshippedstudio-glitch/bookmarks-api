@@ -9,7 +9,7 @@ from bookmarks_api.routes import router
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Bookmarks API",
-        version="0.1.0",
+        version="0.2.0",
         description="Save, list, filter and delete bookmarks.",
     )
     install_error_handlers(app)
