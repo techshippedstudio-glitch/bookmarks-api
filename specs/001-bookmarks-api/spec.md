@@ -6,6 +6,8 @@
 
 **Status**: Draft
 
+**Source of truth**: This spec.md is the authoritative description of this feature's behavior. plan.md, research.md, data-model.md, contracts/ and tasks.md are derived from it; where any of them disagrees with this file, this file wins.
+
 **Input**: User description: "Build a bookmarks API. A user can save a link with a title and optional tags, list their bookmarks newest first, filter by tag, and delete a bookmark. Saving the same URL twice must not create a duplicate."
 
 ## Clarifications
