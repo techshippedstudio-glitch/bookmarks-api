@@ -41,12 +41,20 @@ def _reject_offset(value: str | None) -> None:
     response_model=Bookmark,
     summary="Save a bookmark",
     responses={
-        409: {"model": ErrorResponse, "description": "This link is already bookmarked."},
+        200: {
+            "model": Bookmark,
+            "description": "This link is already bookmarked; the existing bookmark is returned "
+            "unchanged.",
+        },
+        201: {"description": "The bookmark was saved."},
         **ERROR_422,
     },
 )
-def create_bookmark(data: BookmarkCreate, session: SessionDep) -> Bookmark:
-    return Bookmark.model_validate(repository.create_bookmark(session, data))
+def create_bookmark(data: BookmarkCreate, session: SessionDep, response: Response) -> Bookmark:
+    row, created = repository.create_bookmark(session, data)
+    if not created:
+        response.status_code = status.HTTP_200_OK
+    return Bookmark.model_validate(row)
 
 
 @router.get(
