@@ -6,16 +6,26 @@ from sqlalchemy import delete, func, select, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from bookmarks_api.errors import DuplicateUrlError, NotFoundError
+from bookmarks_api.errors import NotFoundError
 from bookmarks_api.models import BookmarkRow
 from bookmarks_api.normalize import normalize_url
 from bookmarks_api.schemas import BookmarkCreate
 
 
-def create_bookmark(session: Session, data: BookmarkCreate) -> BookmarkRow:
-    """Insert a bookmark, or raise DuplicateUrlError if its normalized link already exists.
+MAX_SAVE_ATTEMPTS = 3
 
-    ON CONFLICT DO NOTHING relies on the unique index, so this holds under concurrent saves.
+
+def create_bookmark(session: Session, data: BookmarkCreate) -> tuple[BookmarkRow, bool]:
+    """Save a bookmark, or return the existing one if its normalized link is already saved.
+
+    Returns ``(row, created)``: ``created`` is True when this call inserted the bookmark and
+    False when the normalized link was already bookmarked; the existing row is then returned
+    unchanged and the request's title and tags are ignored (specs/002 FR-001, FR-002).
+
+    ON CONFLICT DO NOTHING relies on the unique index, so exactly one of several concurrent
+    saves of the same new link inserts it; the others wait for that insert to commit and then
+    read the committed row (specs/002 FR-004). If the conflicting bookmark is deleted between
+    the insert attempt and the lookup, the insert is retried.
     """
     normalized = normalize_url(data.url)
     statement = (
@@ -24,15 +34,19 @@ def create_bookmark(session: Session, data: BookmarkCreate) -> BookmarkRow:
         .on_conflict_do_nothing(index_elements=[BookmarkRow.url_normalized])
         .returning(BookmarkRow)
     )
-    row = session.scalars(statement).one_or_none()
-    if row is None:
+    for _ in range(MAX_SAVE_ATTEMPTS):
+        row = session.scalars(statement).one_or_none()
+        if row is not None:
+            session.commit()
+            return row, True
         session.rollback()
-        existing_id = session.scalar(
-            select(BookmarkRow.id).where(BookmarkRow.url_normalized == normalized)
-        )
-        raise DuplicateUrlError(existing_id)
-    session.commit()
-    return row
+        existing = session.scalars(
+            select(BookmarkRow).where(BookmarkRow.url_normalized == normalized)
+        ).one_or_none()
+        if existing is not None:
+            session.commit()
+            return existing, False
+    raise RuntimeError(f"Could not save or find the bookmark after {MAX_SAVE_ATTEMPTS} attempts.")
 
 
 def list_bookmarks(

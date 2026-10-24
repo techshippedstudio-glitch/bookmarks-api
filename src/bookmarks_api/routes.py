@@ -40,13 +40,27 @@ def _reject_offset(value: str | None) -> None:
     status_code=status.HTTP_201_CREATED,
     response_model=Bookmark,
     summary="Save a bookmark",
+    description=(
+        "Idempotent per normalized link (specs/002-idempotent-bookmark-save). A new link is "
+        "stored and returned with 201. A link that is already bookmarked returns the existing "
+        "bookmark unchanged with 200; the title and tags in the request are ignored."
+    ),
     responses={
-        409: {"model": ErrorResponse, "description": "This link is already bookmarked."},
+        201: {"description": "Bookmark saved (the link was not bookmarked before)."},
+        200: {
+            "model": Bookmark,
+            "description": (
+                "This link was already bookmarked; the existing bookmark is returned unchanged."
+            ),
+        },
         **ERROR_422,
     },
 )
-def create_bookmark(data: BookmarkCreate, session: SessionDep) -> Bookmark:
-    return Bookmark.model_validate(repository.create_bookmark(session, data))
+def create_bookmark(data: BookmarkCreate, session: SessionDep, response: Response) -> Bookmark:
+    row, created = repository.create_bookmark(session, data)
+    if not created:
+        response.status_code = status.HTTP_200_OK
+    return Bookmark.model_validate(row)
 
 
 @router.get(
