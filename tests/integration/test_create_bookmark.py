@@ -37,48 +37,114 @@ def test_link_is_stored_as_given(client: TestClient) -> None:
     assert response.json()["url"] == "HTTPS://Example.com/Docs/"
 
 
-def test_equivalent_link_is_rejected_as_duplicate(client: TestClient, row_count) -> None:
+def test_equivalent_link_returns_the_existing_bookmark(client: TestClient, row_count) -> None:
+    """002 US1 AC1: a duplicate save returns 200 with the existing bookmark exactly as stored."""
     first = client.post("/bookmarks", json={"url": "https://example.com/docs", "title": "Docs"})
     second = client.post(
         "/bookmarks",
         json={"url": "HTTPS://Example.com/docs/#intro", "title": "Other title", "tags": ["x"]},
     )
 
-    assert second.status_code == 409
-    error = second.json()["error"]
-    assert error["code"] == "duplicate_url"
-    assert error["details"] == {"existing_id": first.json()["id"]}
+    assert first.status_code == 201
+    assert second.status_code == 200
+    assert second.json() == first.json()
+    assert second.json()["url"] == "https://example.com/docs"
     assert row_count() == 1
 
 
-def test_duplicate_leaves_the_existing_bookmark_unchanged(client: TestClient, engine) -> None:
-    client.post("/bookmarks", json={"url": "https://example.com/docs", "title": "Docs"})
-    client.post("/bookmarks", json={"url": "https://example.com/docs/", "title": "Changed"})
+def test_duplicate_ignores_title_and_tags_and_leaves_the_bookmark_unchanged(
+    client: TestClient, engine
+) -> None:
+    """002 US1 AC2 / FR-003: the request's title and tags are ignored; nothing is modified."""
+    first = client.post(
+        "/bookmarks", json={"url": "https://example.com/docs", "title": "Docs", "tags": ["api"]}
+    )
+    second = client.post(
+        "/bookmarks",
+        json={"url": "https://example.com/docs", "title": "Other", "tags": ["python", "new"]},
+    )
 
+    assert second.status_code == 200
+    assert second.json()["title"] == "Docs"
+    assert second.json()["tags"] == ["api"]
+    assert second.json() == first.json()
     with engine.connect() as connection:
-        title = connection.exec_driver_sql("SELECT title FROM bookmarks").scalar_one()
+        rows = connection.exec_driver_sql("SELECT title, tags, created_at FROM bookmarks").all()
+    assert len(rows) == 1
+    title, tags, created_at = rows[0]
     assert title == "Docs"
+    assert tags == ["api"]
+    assert created_at == datetime.fromisoformat(first.json()["created_at"])
+    listing = client.get("/bookmarks").json()
+    assert listing["total"] == 1
+    assert [item["title"] for item in listing["items"]] == ["Docs"]
 
 
-def test_concurrent_saves_of_the_same_link_leave_one_bookmark(client: TestClient, row_count) -> None:
-    statuses: list[int] = []
-    barrier = threading.Barrier(2)
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param({"url": "https://example.com/docs", "title": "t" * 201}, id="title-over-200"),
+        pytest.param(
+            {
+                "url": "https://example.com/docs",
+                "title": "Many",
+                "tags": [f"t{i}" for i in range(11)],
+            },
+            id="eleven-tags",
+        ),
+    ],
+)
+def test_invalid_duplicate_is_still_a_validation_error(
+    client: TestClient, engine, payload: dict
+) -> None:
+    """002 FR-006: validation runs before the duplicate check."""
+    client.post("/bookmarks", json={"url": "https://example.com/docs", "title": "Docs"})
 
-    def save(url: str) -> None:
-        barrier.wait()
-        statuses.append(client.post("/bookmarks", json={"url": url, "title": "Race"}).status_code)
+    response = client.post("/bookmarks", json=payload)
 
-    threads = [
-        threading.Thread(target=save, args=("https://example.com/race",)),
-        threading.Thread(target=save, args=("https://EXAMPLE.com/race/",)),
-    ]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
+    with engine.connect() as connection:
+        rows = connection.exec_driver_sql("SELECT title, tags FROM bookmarks").all()
+    assert rows == [("Docs", [])]
 
-    assert sorted(statuses) == [201, 409]
-    assert row_count() == 1
+
+def test_link_with_a_different_query_is_a_new_bookmark(client: TestClient, row_count) -> None:
+    """002 Edge Case: links that differ only in the query string are different links."""
+    client.post("/bookmarks", json={"url": "https://example.com/docs", "title": "Docs"})
+
+    response = client.post("/bookmarks", json={"url": "https://example.com/docs?x=1", "title": "Q"})
+
+    assert response.status_code == 201
+    assert row_count() == 2
+
+
+def test_concurrent_saves_of_the_same_link_leave_one_bookmark(
+    client: TestClient, row_count
+) -> None:
+    """002 US2 AC1 / FR-005: one save gets 201, the other 200, both with the same bookmark."""
+    for _ in range(20):
+        results: list[tuple[int, dict]] = []
+        barrier = threading.Barrier(2)
+
+        def save(url: str) -> None:
+            barrier.wait()
+            response = client.post("/bookmarks", json={"url": url, "title": "Race"})
+            results.append((response.status_code, response.json()))
+
+        threads = [
+            threading.Thread(target=save, args=("https://example.com/race",)),
+            threading.Thread(target=save, args=("https://EXAMPLE.com/race/",)),
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        assert sorted(status for status, _ in results) == [200, 201]
+        assert results[0][1]["id"] == results[1][1]["id"]
+        assert row_count() == 1
+        assert client.delete(f"/bookmarks/{results[0][1]['id']}").status_code == 204
 
 
 @pytest.mark.parametrize(
