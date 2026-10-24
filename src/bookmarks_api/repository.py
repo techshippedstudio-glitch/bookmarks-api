@@ -11,6 +11,8 @@ from bookmarks_api.models import BookmarkRow
 from bookmarks_api.normalize import normalize_url
 from bookmarks_api.schemas import BookmarkCreate
 
+MAX_SAVE_ATTEMPTS = 3
+
 
 def create_bookmark(session: Session, data: BookmarkCreate) -> tuple[BookmarkRow, bool]:
     """Insert a bookmark and return ``(row, True)``, or, if its normalized link is already
@@ -18,7 +20,8 @@ def create_bookmark(session: Session, data: BookmarkCreate) -> tuple[BookmarkRow
 
     ON CONFLICT DO NOTHING relies on the unique index, so this holds under concurrent saves:
     the losing insert waits for the winner to commit, inserts nothing, and then reads the
-    winner's row.
+    winner's row. If that row is deleted before it can be read, the insert is retried, so the
+    link is saved as a new bookmark (spec Edge Cases).
     """
     normalized = normalize_url(data.url)
     statement = (
@@ -27,14 +30,19 @@ def create_bookmark(session: Session, data: BookmarkCreate) -> tuple[BookmarkRow
         .on_conflict_do_nothing(index_elements=[BookmarkRow.url_normalized])
         .returning(BookmarkRow)
     )
-    row = session.scalars(statement).one_or_none()
-    if row is None:
+    for _ in range(MAX_SAVE_ATTEMPTS - 1):
+        row = session.scalars(statement).one_or_none()
+        if row is not None:
+            session.commit()
+            return row, True
         session.rollback()
         existing = session.scalars(
             select(BookmarkRow).where(BookmarkRow.url_normalized == normalized)
-        ).one()
+        ).one_or_none()
         session.commit()
-        return existing, False
+        if existing is not None:
+            return existing, False
+    row = session.scalars(statement).one()
     session.commit()
     return row, True
 

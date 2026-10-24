@@ -42,7 +42,9 @@ considered.
   "raise a duplicate error carrying its id", which produced 409).
 - **Rationale**: The database guarantees uniqueness even when two saves race (spec edge case):
   the losing insert waits for the winner to commit, inserts nothing, and then reads the winner's
-  row, so one save gets 201 and the other 200 with the same bookmark;
+  row, so one save gets 201 and the other 200 with the same bookmark. If the existing row is
+  deleted between the skipped insert and the read, the insert is retried (at most 3 attempts) and
+  the link is saved as new (201);
   `ON CONFLICT` avoids relying on catching exceptions mid-transaction.
 - **Alternatives considered**: check-then-insert in application code (races under concurrency);
   catching `IntegrityError` (works, but leaves the transaction aborted and is noisier).

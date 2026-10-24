@@ -5,6 +5,8 @@ from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import event, text
+from sqlalchemy.orm import Session
 
 
 def test_save_with_title_and_no_tags(client: TestClient, row_count) -> None:
@@ -91,6 +93,34 @@ def test_concurrent_saves_of_the_same_link_leave_one_bookmark(client: TestClient
 
     assert sorted(status for status, _ in results) == [200, 201]
     assert results[0][1] == results[1][1]
+    assert row_count() == 1
+
+
+def test_save_racing_a_delete_of_the_same_link_saves_a_new_bookmark(
+    client: TestClient, engine, row_count
+) -> None:
+    """The existing bookmark is deleted after the insert is skipped but before it is read."""
+    first = client.post("/bookmarks", json={"url": "https://example.com/gone", "title": "Old"})
+    deleted: list[bool] = []
+
+    def delete_existing(_session: Session) -> None:
+        if not deleted:
+            deleted.append(True)
+            with engine.begin() as connection:
+                connection.execute(text("DELETE FROM bookmarks"))
+
+    event.listen(Session, "after_rollback", delete_existing)
+    try:
+        response = client.post(
+            "/bookmarks", json={"url": "https://EXAMPLE.com/gone/", "title": "New"}
+        )
+    finally:
+        event.remove(Session, "after_rollback", delete_existing)
+
+    assert deleted == [True]
+    assert response.status_code == 201
+    assert response.json()["title"] == "New"
+    assert response.json()["id"] != first.json()["id"]
     assert row_count() == 1
 
 

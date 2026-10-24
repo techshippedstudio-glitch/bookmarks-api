@@ -19,7 +19,7 @@ existing `docker-compose.yml`.
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+ (tested on 3.12 and 3.13)
+**Language/Version**: Python 3.11+ (tested on 3.11, 3.12 and 3.13)
 
 **Primary Dependencies**: FastAPI, SQLAlchemy 2.0, Alembic, psycopg 3 (binary), Uvicorn; tests:
 pytest, httpx2. Each is justified in [research.md](research.md) (Constitution IV).

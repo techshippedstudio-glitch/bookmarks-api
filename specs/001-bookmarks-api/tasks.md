@@ -68,8 +68,12 @@ link returns 200 with the existing bookmark, unchanged.
 
 - [X] T013 [P] [US1] Implement `normalize_url(url) -> str` and `normalize_tags(tags) -> list[str]` in `src/bookmarks_api/normalize.py` using only the standard library, raising `ValueError` with a clear message on invalid input
 - [X] T014 [P] [US1] Create Pydantic models in `src/bookmarks_api/schemas.py`: `BookmarkCreate` (`url` str, max 2048, http/https with a host; `title` trimmed, 1 to 200 characters; `tags` list default `[]`, normalized via `normalize_tags`, at most 10 after de-duplication; extra fields forbidden) and `Bookmark` (`id`, `url`, `title`, `tags`, `created_at`)
-- [X] T015 [US1] Implement `create_bookmark(session, data)` in `src/bookmarks_api/repository.py` using `INSERT ... ON CONFLICT (url_normalized) DO NOTHING RETURNING`, returning `(row, created)`; when nothing is inserted, read the existing row by `url_normalized` and return it unchanged with `created = False` (research.md, "Preventing duplicate links")
+- [X] T015 [US1] Implement `create_bookmark(session, data)` in `src/bookmarks_api/repository.py` using `INSERT ... ON CONFLICT (url_normalized) DO NOTHING RETURNING`, returning `(row, created)`; when nothing is inserted, read the existing row by `url_normalized` and return it unchanged with `created = False`; if that row was deleted before it could be read, retry the insert (bounded) so the link is saved as new (research.md, "Preventing duplicate links")
 - [X] T016 [US1] Implement `POST /bookmarks` in `src/bookmarks_api/routes.py` returning 201 with `Bookmark` for a new link and 200 with the existing `Bookmark` for an already-saved link, with the 422 response declared using `ErrorResponse`
+
+> Note (change request 2026-10-24): T008, T012, T015, T016 and T026 were rewritten in place to
+> the accepted duplicate-save behavior (existing bookmark returned with 200, no 409). The change
+> is recorded in Phase 10 (T037, T038).
 
 **Checkpoint**: User Story 1 works and is tested on its own (MVP)
 
@@ -80,7 +84,7 @@ link returns 200 with the existing bookmark, unchanged.
 **Goal**: A user can list bookmarks newest first, in pages, with a total count.
 
 **Independent Test**: `GET /bookmarks` returns saved bookmarks newest first with `total`, `limit`
-and `offset`.
+and `next_cursor`.
 
 > Note (constitution v1.1.0): T017-T020 built offset paging, which Principle VI now forbids. Corrective
 > tasks are appended by /speckit-converge; these tasks are kept as history.
@@ -219,4 +223,5 @@ Task: "BookmarkCreate / Bookmark in src/bookmarks_api/schemas.py"               
 > `INSERT ... ON CONFLICT DO NOTHING`) is unchanged. T008, T012, T015, T016 and T026 above are
 > rewritten to describe the accepted behavior.
 
-- [X] T037 [US1] Saving a link whose normalized form is already stored returns the existing bookmark unchanged with 200 OK instead of 409 `duplicate_url`; the request's title and tags are ignored; a new link still returns 201 Created; two concurrent saves of the same new link store one bookmark (one 201, one 200 with the same bookmark). `create_bookmark` in `src/bookmarks_api/repository.py` returns `(row, created)`; `POST /bookmarks` in `src/bookmarks_api/routes.py` sets 200 when not created and declares 200 and 201 (no 409); `DuplicateUrlError` and its handler are removed from `src/bookmarks_api/errors.py`; tests updated in `tests/integration/test_create_bookmark.py` and `tests/integration/test_errors.py` (FR-004)
+- [X] T037 [US1] Flow-back record for FR-004: an already-saved link returns the existing bookmark unchanged with 200 instead of 409 `duplicate_url`; implemented and tested as now described in T008, T012, T015, T016 and T026 (`src/bookmarks_api/errors.py`, `repository.py`, `routes.py`; `tests/integration/test_create_bookmark.py`, `test_errors.py`)
+- [X] T038 [US1] Handle a save racing a delete of the same link (found by /speckit-analyze, finding U1): in `create_bookmark` in `src/bookmarks_api/repository.py`, when the conflicting row is gone before it is read, retry the insert (at most 3 attempts) so the link is saved as new with 201; real-database test `test_save_racing_a_delete_of_the_same_link_saves_a_new_bookmark` in `tests/integration/test_create_bookmark.py`, per spec Edge Cases
