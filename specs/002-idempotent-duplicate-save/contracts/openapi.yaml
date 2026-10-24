@@ -1,0 +1,80 @@
+openapi: 3.1.0
+info:
+  title: Bookmarks API — idempotent duplicate save (delta)
+  version: 0.2.0
+  description: >
+    Delta contract for specs/002-idempotent-duplicate-save. It describes only POST /bookmarks,
+    which supersedes the same operation in specs/001-bookmarks-api/contracts/openapi.yaml
+    (that file is a historical record and is not edited). GET /bookmarks and
+    DELETE /bookmarks/{bookmark_id} are unchanged and remain as described there.
+    Saving an already bookmarked link no longer returns 409 duplicate_url; it returns the
+    existing bookmark, unchanged, with 200.
+paths:
+  /bookmarks:
+    post:
+      summary: Save a bookmark
+      operationId: createBookmark
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookmarkCreate' }
+      responses:
+        '200':
+          description: >
+            The normalized link was already bookmarked; the existing bookmark is returned
+            unchanged. The title and tags in the request are ignored.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Bookmark' }
+        '201':
+          description: Bookmark saved (the normalized link was not yet bookmarked)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Bookmark' }
+        '422':
+          description: Invalid link, title or tags (checked before the duplicate check)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+components:
+  schemas:
+    BookmarkCreate:
+      type: object
+      required: [url, title]
+      additionalProperties: false
+      description: Unchanged from specs/001-bookmarks-api.
+      properties:
+        url: { type: string, maxLength: 2048, description: http or https link with a host }
+        title: { type: string, minLength: 1, maxLength: 200, description: Ignored when the link is already saved }
+        tags:
+          type: array
+          default: []
+          description: At most 10 after normalization; ignored when the link is already saved.
+          items: { type: string, description: 'Trimmed and lowercased; must match ^[a-z0-9-]{1,30}$' }
+    Bookmark:
+      type: object
+      required: [id, url, title, tags, created_at]
+      description: Unchanged from specs/001-bookmarks-api. Same shape for 200 and 201.
+      properties:
+        id: { type: integer }
+        url: { type: string, description: The link as the user first gave it }
+        title: { type: string }
+        tags: { type: array, items: { type: string }, description: Normalized, unique, sorted }
+        created_at: { type: string, format: date-time }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: duplicate_url is no longer produced (removed by this feature).
+              enum: [validation_error, not_found, internal_error]
+            message: { type: string }
+            details:
+              description: Extra information, e.g. field errors
+              type: [object, array, 'null']
