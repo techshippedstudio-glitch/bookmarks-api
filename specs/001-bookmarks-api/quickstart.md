@@ -36,7 +36,7 @@ http://127.0.0.1:8000/docs, or use curl:
 | Step | Request | Expected |
 | --- | --- | --- |
 | 1 | `POST /bookmarks` `{"url": "https://fastapi.tiangolo.com/", "title": "FastAPI docs", "tags": ["Python", "api"]}` | 201, tags `["api", "python"]` |
-| 2 | `POST /bookmarks` `{"url": "HTTPS://FastAPI.tiangolo.com", "title": "Again"}` | 409 `duplicate_url`, `details.existing_id` = id from step 1 |
+| 2 | `POST /bookmarks` `{"url": "HTTPS://FastAPI.tiangolo.com", "title": "Again"}` | 200, the step 1 bookmark unchanged (same `id`, title "FastAPI docs", tags `["api", "python"]`) |
 | 3 | `GET /bookmarks` | 200, the step 1 bookmark first, `total` 1 |
 | 4 | `GET /bookmarks?tag=PYTHON` | 200, the step 1 bookmark |
 | 5 | `GET /bookmarks?limit=500` | 422 `validation_error` |

@@ -51,10 +51,15 @@ its own.
 
 ## Phase 3: User Story 1 - Save a bookmark (Priority: P1) 🎯 MVP
 
-**Goal**: A user can save a link with a title and optional tags; duplicates are rejected.
+**Goal**: A user can save a link with a title and optional tags; saving a link that is already
+saved returns the existing bookmark instead of creating a duplicate.
 
 **Independent Test**: `POST /bookmarks` returns 201 with the saved bookmark; saving an equivalent
-link returns 409 with `details.existing_id`.
+link returns 200 with the existing bookmark, unchanged.
+
+> Note (flow-back 2026-10-24): T008, T012, T015, T016 and T026 built and tested the original
+> duplicate rule (409 `duplicate_url` with `details.existing_id`), which FR-004 no longer specifies.
+> The replacement work is recorded in Phase 10; these tasks are kept as history.
 
 ### Tests for User Story 1
 
@@ -208,3 +213,19 @@ Task: "BookmarkCreate / Bookmark in src/bookmarks_api/schemas.py"               
 - [X] T034 Return 422 `validation_error` for a malformed `cursor` and for any request that sends `offset`, with a message that names `cursor`, per spec Edge Cases (missing)
 - [X] T035 Rewrite the paging tests in `tests/integration/test_list_bookmarks.py` and `tests/integration/test_filter_by_tag.py` for cursors, and add a test that pages through all results while bookmarks are saved between requests and finds no duplicates and no gaps, per US2/AC3-AC5 and the Constitution VI quality gate (missing)
 - [X] T036 Update the `GET /bookmarks` row in `README.md` to document `cursor` and `next_cursor` instead of `offset`, per contracts/openapi.yaml (partial)
+
+## Phase 10: Flow-back - duplicate saves return the existing bookmark (2026-10-24)
+
+**Discovery**: Rejecting a save of an already-saved link with 409 forced clients to treat a
+harmless repeat save as an error. FR-004 now says a save of an existing link (after normalization)
+returns the existing bookmark unchanged with 200 OK; the title and tags in the new request are
+ignored; a new link still returns 201 Created; concurrent saves of the same new link still store one
+bookmark (one 201, the other 200 with the same bookmark). This changes behavior (spec), the duplicate
+strategy (research, plan) and the contract; the change was made in code first and flowed back here.
+
+- [X] T037 [US1] Change `create_bookmark(session, data)` in `src/bookmarks_api/repository.py` to return `(row, created)`: keep `INSERT ... ON CONFLICT (url_normalized) DO NOTHING RETURNING`; when nothing is inserted, select and return the existing row with `created=False`, without modifying it; if that row was deleted between the insert and the select, retry the insert (FR-004, research.md "Preventing duplicate links")
+- [X] T038 [US1] Make `POST /bookmarks` in `src/bookmarks_api/routes.py` return 201 with `Bookmark` for a new link and 200 with the existing `Bookmark` otherwise; declare 201, 200 and 422 in OpenAPI and no 409, per contracts/openapi.yaml
+- [X] T039 [P] Remove `DuplicateUrlError` and its 409 `duplicate_url` handler from `src/bookmarks_api/errors.py` (no longer raised), per research.md "Error envelope"
+- [X] T040 [P] [US1] Update `tests/integration/test_create_bookmark.py` for User Story 1 scenario 3 and the concurrency edge case: an equivalent link sent with a different title and tags → 200 with a body equal to the first save, stored url, title and tags unchanged, still one row; two concurrent saves of equivalent links → one 201 and one 200 with the same body, one row (FR-004)
+- [X] T041 [P] Update `tests/integration/test_errors.py`: drop the 409 envelope test and assert `/openapi.json` documents `POST /bookmarks` with 201 and 200 `Bookmark` responses, 422 `ErrorResponse`, and no 409 (SC-005, Constitution I)
+- [X] T042 [P] Update the `POST /bookmarks` row in `README.md` and step 2 of `specs/001-bookmarks-api/quickstart.md` to describe 200 with the existing bookmark instead of 409

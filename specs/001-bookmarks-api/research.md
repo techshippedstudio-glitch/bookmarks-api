@@ -35,13 +35,22 @@ considered.
 
 ## Preventing duplicate links
 
-- **Decision**: Store the link as given (`url`) and a normalized form (`url_normalized`) with a
-  unique index. Insert with `INSERT ... ON CONFLICT (url_normalized) DO NOTHING RETURNING ...`; if
-  nothing is returned, look up the existing row and raise a duplicate error carrying its id.
-- **Rationale**: The database guarantees uniqueness even when two saves race (spec edge case);
-  `ON CONFLICT` avoids relying on catching exceptions mid-transaction.
+- **Decision** (revised 2026-10-24, flow-back; FR-004): Store the link as given (`url`) and a
+  normalized form (`url_normalized`) with a unique index. Insert with
+  `INSERT ... ON CONFLICT (url_normalized) DO NOTHING RETURNING ...`; a returned row means the link
+  was new (201 Created). If nothing is returned, select the existing row by `url_normalized` and
+  return it unchanged (200 OK); the request's title and tags are ignored. If that select finds
+  nothing (the conflicting row was deleted in between), retry the insert.
+- **Rationale**: The database guarantees uniqueness even when two saves race (spec edge case): the
+  loser of the race gets no row back and returns the winner's row, so one save gets 201 and the
+  other 200 with the same bookmark. `ON CONFLICT DO NOTHING` never writes to the existing row, so
+  the stored bookmark is not modified, and avoids catching exceptions mid-transaction.
 - **Alternatives considered**: check-then-insert in application code (races under concurrency);
-  catching `IntegrityError` (works, but leaves the transaction aborted and is noisier).
+  catching `IntegrityError` (works, but leaves the transaction aborted and is noisier);
+  `ON CONFLICT DO UPDATE SET url_normalized = EXCLUDED.url_normalized RETURNING ...` (returns the
+  row in one statement, but writes a new row version of a bookmark that must not be modified and
+  cannot tell 201 from 200 without extra tricks); rejecting with 409 `duplicate_url` (the original
+  decision, replaced by the revised FR-004).
 
 ## Link normalization
 
@@ -84,7 +93,8 @@ considered.
 ## Error envelope
 
 - **Decision**: `{"error": {"code": str, "message": str, "details": object | null}}`. Codes:
-  `validation_error` (422), `not_found` (404), `duplicate_url` (409, `details.existing_id`).
+  `validation_error` (422), `not_found` (404). A save of an already-saved link is not an error
+  (200 with the existing bookmark, FR-004), so there is no `duplicate_url` code.
   FastAPI's `RequestValidationError` and `HTTPException` handlers are replaced so framework errors
   use the same shape; unexpected errors return 500 `internal_error` without internals.
 - **Rationale**: Constitution III.

@@ -10,7 +10,7 @@ bookmark's "link" is the `url` field in the API and the database.
 | --- | --- | --- | --- |
 | `id` | `bigint` | primary key, generated always as identity | Identifier returned to the user and used for delete |
 | `url` | `varchar(2048)` | not null | The link exactly as the user gave it |
-| `url_normalized` | `varchar(2048)` | not null, **unique** | Normalized link used for duplicate detection (FR-004) |
+| `url_normalized` | `varchar(2048)` | not null, **unique** | Normalized link used to find an already-saved bookmark; a save of an existing link returns that row unchanged (FR-004) |
 | `title` | `varchar(200)` | not null, `char_length(title) >= 1` | Trimmed before saving |
 | `tags` | `text[]` | not null, default `'{}'`, `cardinality(tags) <= 10` | Normalized, de-duplicated, sorted |
 | `created_at` | `timestamptz` | not null, default `now()` | The saved time (FR-003) |
@@ -20,7 +20,7 @@ bookmark's "link" is the `url` field in the API and the database.
 | Name | Definition | Serves |
 | --- | --- | --- |
 | `bookmarks_pkey` | `PRIMARY KEY (id)` | Delete by id |
-| `uq_bookmarks_url_normalized` | `UNIQUE (url_normalized)` | No duplicate links, even under concurrent saves (FR-004) |
+| `uq_bookmarks_url_normalized` | `UNIQUE (url_normalized)` | No duplicate links, even under concurrent saves; the losing save returns the existing row (FR-004) |
 | `ix_bookmarks_created_at_id` | `(created_at DESC, id DESC)` | Newest-first listing and paging (FR-006) |
 | `ix_bookmarks_tags` | `GIN (tags)` | Tag filter `tags @> ARRAY[:tag]` (FR-007) |
 

@@ -10,6 +10,9 @@ paths:
   /bookmarks:
     post:
       summary: Save a bookmark
+      description: >
+        Saves a new link (201). If the link, after normalization, is already saved, returns the
+        existing bookmark unchanged (200); the title and tags in the request are ignored (FR-004).
       operationId: createBookmark
       requestBody:
         required: true
@@ -18,15 +21,15 @@ paths:
             schema: { $ref: '#/components/schemas/BookmarkCreate' }
       responses:
         '201':
-          description: Bookmark saved
+          description: New link; bookmark saved
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Bookmark' }
-        '409':
-          description: The normalized link is already bookmarked; details.existing_id names it
+        '200':
+          description: The normalized link is already saved; the existing bookmark, unchanged
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              schema: { $ref: '#/components/schemas/Bookmark' }
         '422':
           description: Invalid link, title or tags
           content:
@@ -126,8 +129,8 @@ components:
           properties:
             code:
               type: string
-              enum: [validation_error, not_found, duplicate_url, internal_error]
+              enum: [validation_error, not_found, internal_error]
             message: { type: string }
             details:
-              description: Extra information, e.g. field errors or existing_id
+              description: Extra information, e.g. field errors
               type: [object, array, 'null']
