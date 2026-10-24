@@ -13,7 +13,8 @@ with no duplicate links after normalization. Built as a FastAPI service with Pyd
 response models, PostgreSQL storage through SQLAlchemy 2.0 (sync, psycopg 3), and Alembic
 migrations. Uniqueness is enforced by a unique index on the normalized link, so it holds under
 concurrent saves; tags are a normalized `text[]` column with a GIN index for filtering. All errors
-use one JSON envelope.
+use one JSON envelope. Tests run with pytest against the real `bookmarks_test` database from the
+existing `docker-compose.yml`.
 
 Saving a link that is already bookmarked is not an error (spec FR-004, change of 2026-10-24):
 `POST /bookmarks` returns 201 Created with the new bookmark when it inserts a row, and 200 OK with
@@ -21,12 +22,11 @@ the existing bookmark, unchanged, when the normalized link is already stored; th
 and tags are ignored in that case. The insert still uses `ON CONFLICT (url_normalized) DO NOTHING`,
 so two concurrent saves of the same new link store one row: one caller gets 201, the other reads
 the winner's row and gets 200 with the same bookmark (research.md, "Preventing duplicate links").
-The 409 `duplicate_url` response is removed from the contract and the code. Tests run with pytest against the real `bookmarks_test` database from the
-existing `docker-compose.yml`.
+The 409 `duplicate_url` response is removed from the contract and the code.
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+ (tested on 3.12 and 3.13)
+**Language/Version**: Python 3.11+ (tested on 3.11, 3.12 and 3.13)
 
 **Primary Dependencies**: FastAPI, SQLAlchemy 2.0, Alembic, psycopg 3 (binary), Uvicorn; tests:
 pytest, httpx2. Each is justified in [research.md](research.md) (Constitution IV).
