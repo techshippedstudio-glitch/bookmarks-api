@@ -37,8 +37,12 @@ considered.
 
 - **Decision**: Store the link as given (`url`) and a normalized form (`url_normalized`) with a
   unique index. Insert with `INSERT ... ON CONFLICT (url_normalized) DO NOTHING RETURNING ...`; if
-  nothing is returned, look up the existing row and raise a duplicate error carrying its id.
-- **Rationale**: The database guarantees uniqueness even when two saves race (spec edge case);
+  nothing is returned, look up the existing row and return it unchanged, and the endpoint answers
+  200 OK instead of 201 Created (FR-004, change request 2026-10-24; this replaced the original
+  "raise a duplicate error carrying its id", which produced 409).
+- **Rationale**: The database guarantees uniqueness even when two saves race (spec edge case):
+  the losing insert waits for the winner to commit, inserts nothing, and then reads the winner's
+  row, so one save gets 201 and the other 200 with the same bookmark;
   `ON CONFLICT` avoids relying on catching exceptions mid-transaction.
 - **Alternatives considered**: check-then-insert in application code (races under concurrency);
   catching `IntegrityError` (works, but leaves the transaction aborted and is noisier).
@@ -84,7 +88,8 @@ considered.
 ## Error envelope
 
 - **Decision**: `{"error": {"code": str, "message": str, "details": object | null}}`. Codes:
-  `validation_error` (422), `not_found` (404), `duplicate_url` (409, `details.existing_id`).
+  `validation_error` (422), `not_found` (404). (A duplicate save is not an error; it returns the
+  existing bookmark with 200, so the former `duplicate_url` (409) code is gone.)
   FastAPI's `RequestValidationError` and `HTTPException` handlers are replaced so framework errors
   use the same shape; unexpected errors return 500 `internal_error` without internals.
 - **Rationale**: Constitution III.

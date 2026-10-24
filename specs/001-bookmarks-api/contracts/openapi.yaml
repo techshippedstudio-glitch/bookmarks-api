@@ -17,16 +17,18 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/BookmarkCreate' }
       responses:
-        '201':
-          description: Bookmark saved
+        '200':
+          description: >
+            The normalized link is already bookmarked; the existing bookmark is returned
+            unchanged (the request's title and tags are ignored) (FR-004)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Bookmark' }
-        '409':
-          description: The normalized link is already bookmarked; details.existing_id names it
+        '201':
+          description: Bookmark saved (new link)
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              schema: { $ref: '#/components/schemas/Bookmark' }
         '422':
           description: Invalid link, title or tags
           content:
@@ -126,8 +128,8 @@ components:
           properties:
             code:
               type: string
-              enum: [validation_error, not_found, duplicate_url, internal_error]
+              enum: [validation_error, not_found, internal_error]
             message: { type: string }
             details:
-              description: Extra information, e.g. field errors or existing_id
+              description: Extra information, e.g. field errors
               type: [object, array, 'null']

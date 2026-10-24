@@ -12,7 +12,7 @@
 
 ### Session 2026-10-21
 
-- Q: When someone saves a link that is already bookmarked, what should happen? → A: Reject it with a conflict error that includes the existing bookmark's identifier; the existing bookmark is left unchanged.
+- Q: When someone saves a link that is already bookmarked, what should happen? → A: ~~Reject it with a conflict error that includes the existing bookmark's identifier; the existing bookmark is left unchanged.~~ Superseded on 2026-10-24 (see "Change request 2026-10-24" below).
 - Q: Which links count as "the same link"? → A: Links that match after normalization: scheme and host lowercased, default port removed, trailing slash on the path removed, fragment (#...) removed; the query string is kept as is.
 - Q: How should tags be cleaned up and limited? → A: Trim spaces, lowercase, drop duplicates; 1 to 30 characters of letters, digits and hyphens; at most 10 tags per bookmark.
 - Q: How should the list behave when there are many bookmarks? → A: Return pages: 20 per page by default, up to 100 per page, using a limit and an offset, plus the total count.
@@ -21,6 +21,10 @@
 ### Session 2026-10-21 (constitution v1.1.0)
 
 - Q: Principle VI forbids offset pagination. How does a client ask for the next page? → A: Each page returns an opaque next-page token (none on the last page); the client passes it back to get the next page. The offset option is removed, and a request that still sends it gets a validation error that points to the token.
+
+### Change request 2026-10-24
+
+- Q: Saving a link that is already bookmarked must no longer be rejected. What should happen instead? → A: If the link (after normalization) is already saved, the existing bookmark is returned unchanged with a success response (200 OK) instead of a conflict error. The title and tags sent in the new request are ignored and the stored bookmark is not modified. Saving a new link still returns 201 Created. Two concurrent saves of the same new link still store only one bookmark: one gets 201, the other gets 200 with the same bookmark. This replaces the duplicate rule in FR-004.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -42,8 +46,9 @@ contains the saved link, title, tags and the time it was saved.
 2. **Given** no bookmarks exist, **When** the user saves a link with a title and the tags "Python",
    " api " and "python", **Then** the bookmark is returned with the tags "api" and "python".
 3. **Given** a bookmark for `https://example.com/docs` exists, **When** the user saves
-   `HTTPS://Example.com/docs/#intro`, **Then** no second bookmark is created and the user receives
-   a conflict error that includes the existing bookmark's identifier.
+   `HTTPS://Example.com/docs/#intro` with a different title and tags, **Then** no second bookmark
+   is created and the user receives the existing bookmark, unchanged, with a 200 OK success
+   response (not 201 Created).
 4. **Given** any state, **When** the user tries to save a bookmark without a link or without a
    title, with a link that is not a valid http or https address, with a title over 200 characters,
    with more than 10 tags, or with an invalid tag, **Then** nothing is saved and the user receives
@@ -122,9 +127,9 @@ appears in the list.
 
 ### Edge Cases
 
-- Saving a link that is already bookmarked, even with a different title or tags, is rejected with
-  a conflict error that includes the existing bookmark's identifier; the existing bookmark is not
-  changed.
+- Saving a link that is already bookmarked, even with a different title or tags, is not an error:
+  the existing bookmark is returned unchanged with 200 OK; the title and tags in the request are
+  ignored and the stored bookmark is not modified.
 - Links that differ only in scheme or host letter case, a default port (`:80` for http, `:443`
   for https), a trailing slash on the path, or a fragment are the same link. Links with different
   query strings are different links.
@@ -132,7 +137,8 @@ appears in the list.
   kept once.
 - A tag that is empty after trimming, longer than 30 characters, or contains characters other
   than letters, digits and hyphens is rejected.
-- Two saves of the same link at the same moment still leave exactly one bookmark.
+- Two saves of the same new link at the same moment still leave exactly one bookmark: one save
+  gets 201 Created, the other gets 200 OK with the same bookmark.
 - A malformed next-page token (one that does not decode to a position in the list) is rejected with
   a validation error.
 - A request that sends the removed offset option is rejected with a validation error that names the
@@ -151,11 +157,14 @@ appears in the list.
 - **FR-003**: System MUST record the time each bookmark was saved.
 - **FR-004**: System MUST NOT store two bookmarks for the same link, where links are compared after
   normalization (scheme and host lowercased, default port removed, trailing path slash removed,
-  fragment removed, query kept). A save of an existing link MUST be rejected with a conflict error
-  that includes the existing bookmark's identifier, and MUST hold even when two saves happen at
-  the same moment.
-- **FR-005**: System MUST return the saved bookmark, including an identifier the user can use to
-  delete it.
+  fragment removed, query kept). A save of a link that is already saved MUST NOT be rejected: it
+  MUST return the existing bookmark unchanged with 200 OK, ignoring the title and tags in the
+  request and leaving the stored bookmark unmodified. A save of a new link MUST return 201
+  Created. This MUST hold even when two saves of the same new link happen at the same moment:
+  exactly one bookmark is stored, one save gets 201 and the other gets 200 with the same
+  bookmark.
+- **FR-005**: System MUST return the saved bookmark (or, for an already-saved link, the existing
+  bookmark), including an identifier the user can use to delete it.
 - **FR-006**: System MUST list bookmarks ordered by saved time, most recent first, in pages of 20
   by default and at most 100, and MUST include the total number of matching bookmarks. Each page
   MUST return an opaque next-page token (none on the last page), and paging with it MUST NOT repeat
