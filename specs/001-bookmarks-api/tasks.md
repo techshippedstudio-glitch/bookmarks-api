@@ -79,20 +79,20 @@ link returns 409 with `details.existing_id`.
 **Goal**: A user can list bookmarks newest first, in pages, with a total count.
 
 **Independent Test**: `GET /bookmarks` returns saved bookmarks newest first with `total`, `limit`
-and `offset`.
+and `offset`. *(As first built. Superseded by T032-T036: cursor paging under Constitution VI.)*
 
 > Note (constitution v1.1.0): T017-T020 built offset paging, which Principle VI now forbids. Corrective
 > tasks are appended by /speckit-converge; these tasks are kept as history.
 
 ### Tests for User Story 2
 
-- [X] T017 [P] [US2] Integration tests in `tests/integration/test_list_bookmarks.py` for User Story 2 scenarios 1 to 4: three saves listed newest first with `total == 3`; empty list with `total == 0`; 25 bookmarks → first page of 20 with `total == 25`, `offset=20` → 5; `limit=101`, `limit=0` and `offset=-1` → 422 `validation_error`; offset past the end → empty page with correct total
+- [X] T017 [P] [US2] Integration tests in `tests/integration/test_list_bookmarks.py` for User Story 2 scenarios 1 to 4: three saves listed newest first with `total == 3`; empty list with `total == 0`; 25 bookmarks → first page of 20 with `total == 25`, `offset=20` → 5; `limit=101`, `limit=0` and `offset=-1` → 422 `validation_error`; offset past the end → empty page with correct total *(superseded by T032-T036, Constitution VI)*
 
 ### Implementation for User Story 2
 
-- [X] T018 [P] [US2] Add `BookmarkPage {items: list[Bookmark], total, limit, offset}` to `src/bookmarks_api/schemas.py`
-- [X] T019 [US2] Implement `list_bookmarks(session, limit, offset, tag=None) -> (items, total)` in `src/bookmarks_api/repository.py`, ordered by `created_at DESC, id DESC`, with `total` from a `COUNT(*)` using the same filter
-- [X] T020 [US2] Implement `GET /bookmarks` in `src/bookmarks_api/routes.py` with `limit` (1 to 100, default 20) and `offset` (0 or greater, default 0) query parameters, returning `BookmarkPage`
+- [X] T018 [P] [US2] Add `BookmarkPage {items: list[Bookmark], total, limit, offset}` to `src/bookmarks_api/schemas.py` *(superseded by T032-T036, Constitution VI)*
+- [X] T019 [US2] Implement `list_bookmarks(session, limit, offset, tag=None) -> (items, total)` in `src/bookmarks_api/repository.py`, ordered by `created_at DESC, id DESC`, with `total` from a `COUNT(*)` using the same filter *(superseded by T032-T036, Constitution VI)*
+- [X] T020 [US2] Implement `GET /bookmarks` in `src/bookmarks_api/routes.py` with `limit` (1 to 100, default 20) and `offset` (0 or greater, default 0) query parameters, returning `BookmarkPage` *(superseded by T032-T036, Constitution VI)*
 
 **Checkpoint**: User Stories 1 and 2 work independently
 
