@@ -8,6 +8,14 @@
 
 **Input**: User description: "Let users search their bookmarks by words in the title. A search returns matching bookmarks newest first, can be combined with the tag filter, and pages the same way the bookmark list does. Search ignores letter case."
 
+## Clarifications
+
+### Session 2026-10-25
+
+- Q: When a client takes a next-page token from one search and sends it with a different search or tag filter, what should happen? → A: Same as the bookmark list: the token only marks a position; the next page holds the bookmarks after that position that match the search now sent, with no error.
+- Q: How fast must a search answer for a collection of 10,000 bookmarks? → A: 95% of searches answer in under 1 second.
+- Q: Should a search word have a minimum length, given that a word matches anywhere in a title? → A: No minimum: any search word of at least 1 character is allowed.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Search bookmarks by title words (Priority: P1)
@@ -103,6 +111,8 @@ newest first.
   "no search".
 - A search longer than 200 characters (the longest possible title) is rejected with a validation
   error.
+- There is no minimum word length: a one-character word such as "c" is a valid search and matches
+  every title that contains that character.
 - Letter case never affects a match, in the search or in the title.
 - A search word matches anywhere in the title, including inside a longer word: "post" finds
   "Postgres", and "art" finds "Start".
@@ -110,8 +120,9 @@ newest first.
   ordinary characters, never as wildcards.
 - Bookmarks saved or deleted between page requests of a search never cause a match to be repeated
   or skipped.
-- A next-page token from one search used with a different search or tag filter is not guaranteed
-  to give meaningful results, but never causes an internal error.
+- A next-page token only marks a position in the newest-first order, as it does for the bookmark
+  list. Sent with a different search or tag filter, it returns the bookmarks after that position
+  that match the search and filter now sent; it is not an error.
 
 ## Requirements *(mandatory)*
 
@@ -164,8 +175,8 @@ newest first.
   existing bookmark tests still pass.
 - **SC-005**: Every error a user can trigger through search returns the same error format as the
   rest of the API.
-- **SC-006**: Search results for a collection of 10,000 bookmarks come back as quickly as the
-  bookmark list does for the same collection, so users do not notice a difference.
+- **SC-006**: For a collection of 10,000 bookmarks, 95% of searches return their page of results
+  in under 1 second.
 
 ## Assumptions
 
