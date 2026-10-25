@@ -4,9 +4,11 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from bookmarks_api.normalize import MAX_URL_LENGTH, normalize_tags, normalize_url
+from bookmarks_api.cursor import decode_cursor
+from bookmarks_api.normalize import MAX_URL_LENGTH, normalize_tag, normalize_tags, normalize_url
 
 MAX_TAGS = 10
+
 
 
 class BookmarkCreate(BaseModel):
@@ -53,3 +55,28 @@ class BookmarkPage(BaseModel):
     next_cursor: str | None = Field(
         description="Pass as `cursor` to get the next page; null on the last page."
     )
+
+
+class BookmarkListQuery(BaseModel):
+    """Query parameters for GET /bookmarks (Constitution I: an explicit request model)."""
+
+    limit: int = Field(default=20, ge=1, le=100, description="Page size, 1 to 100.")
+    cursor: str | None = Field(
+        default=None,
+        description="The next_cursor from the previous page; omit for the first page.",
+    )
+    tag: str | None = Field(
+        default=None, description="Only bookmarks with this tag (normalized like tags)."
+    )
+
+    @field_validator("cursor")
+    @classmethod
+    def _check_cursor(cls, value: str | None) -> str | None:
+        if value is not None:
+            decode_cursor(value)  # raises ValueError for a malformed cursor
+        return value
+
+    @field_validator("tag")
+    @classmethod
+    def _normalize_tag(cls, value: str | None) -> str | None:
+        return normalize_tag(value) if value is not None else None

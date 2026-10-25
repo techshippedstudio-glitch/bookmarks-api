@@ -208,3 +208,7 @@ Task: "BookmarkCreate / Bookmark in src/bookmarks_api/schemas.py"               
 - [X] T034 Return 422 `validation_error` for a malformed `cursor` and for any request that sends `offset`, with a message that names `cursor`, per spec Edge Cases (missing)
 - [X] T035 Rewrite the paging tests in `tests/integration/test_list_bookmarks.py` and `tests/integration/test_filter_by_tag.py` for cursors, and add a test that pages through all results while bookmarks are saved between requests and finds no duplicates and no gaps, per US2/AC3-AC5 and the Constitution VI quality gate (missing)
 - [X] T036 Update the `GET /bookmarks` row in `README.md` to document `cursor` and `next_cursor` instead of `offset`, per contracts/openapi.yaml (partial)
+
+## Phase 10: Baseline before feature 002 (analyze finding, Constitution I)
+
+- [X] T037 CRITICAL: Give `GET /bookmarks` an explicit request model, `BookmarkListQuery {limit, cursor, tag}` in `src/bookmarks_api/schemas.py`, used by `src/bookmarks_api/routes.py`; reject the removed `offset` parameter through a dependency so it stays out of the OpenAPI document; behaviour and the published contract are unchanged; full suite passes on Python 3.11, 3.12 and 3.13, per Constitution I (contradicts)
