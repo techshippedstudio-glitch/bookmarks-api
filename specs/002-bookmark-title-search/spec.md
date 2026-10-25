@@ -108,7 +108,7 @@ newest first.
 - A search with several words matches a bookmark only when every word appears in its title; the
   order of the words does not matter, and repeating a word changes nothing.
 - Whitespace at the start or end of a search, and repeated whitespace between words, is ignored.
-- A search that is empty or only spaces is rejected with a validation error; it is not treated as
+- A search that is empty or only whitespace is rejected with a validation error; it is not treated as
   "no search".
 - A search longer than 200 characters (the longest possible title) is rejected with a validation
   error.
