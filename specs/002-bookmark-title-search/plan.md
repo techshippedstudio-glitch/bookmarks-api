@@ -27,7 +27,9 @@ routes, repository, cursor, schema and error modules; `GET /bookmarks` is unchan
 tests: pytest, httpx2. No new runtime or test dependency (plan input; Constitution IV).
 
 **Storage**: PostgreSQL (16 locally, 18 in the repo's `docker-compose.yml`); existing `bookmarks`
-table; one new GIN expression index `ix_bookmarks_title_words` (migration `0002`)
+table; one new GIN expression index `ix_bookmarks_title_words` (migration `0002`). Case folding
+and the letter class follow the database's character type; the databases must use a UTF-8 ctype
+(C.UTF-8 locally, en_US.utf8 in the postgres:18 image)
 
 **Testing**: pytest; unit tests for the pure "has a word character" check; integration tests
 through the HTTP API against the real test database (Constitution II), one file per user story;

@@ -29,7 +29,9 @@ rolled back.
 - **Rationale**: Clarification Q2 (letters of any alphabet and digits; everything else separates)
   and FR-002 (ignore case). `lower()` and `[[:alnum:]]` follow the database's character type, so
   "Ünï" and "ΣΟΦΙΑ" lowercase and split correctly (verified: `' FastAPI: a tutorial — Spec-Kit_guide
-  Python3 Ünï '` → `{fastapi,a,tutorial,spec,kit,guide,python3,ünï}`).
+  Python3 Ünï '` → `{fastapi,a,tutorial,spec,kit,guide,python3,ünï}`). This depends on a UTF-8
+  database ctype: under a "C" ctype `lower('ΟΔΟΣ')` is unchanged. The run's databases use C.UTF-8;
+  the postgres:18 image defaults to en_US.utf8.
 - **Why not split the search in Python** (analyze I1): Python's `str.lower` and `[^\W_]+` disagree
   with PostgreSQL's `lower` and `[[:alnum:]]` on real input: "ΟΔΟΣ" → Python `οδος`, PostgreSQL
   `οδοσ`; "İstanbul" → Python `i`, `stanbul`, PostgreSQL `istanbul`; "x½y" → Python one word,
