@@ -8,6 +8,14 @@
 
 **Input**: User description: "Let users search their bookmarks by words in the title. A search returns matching bookmarks newest first, can be combined with the tag filter, and pages the same way the bookmark list does. Search ignores letter case."
 
+## Clarifications
+
+### Session 2026-10-25
+
+- Q: Should searching be a separate request of its own, or an optional search option added to the existing bookmark list request? → A: A separate search request that requires search words; the bookmark list request is unchanged.
+- Q: Which characters make up a word, in both the search and the title? → A: A word is an unbroken run of letters (any alphabet) and digits; every other character separates words.
+- Q: What should happen when a next-page token from one search is sent with different search words or a different tag? → A: Accept it, as the bookmark list does: the token is only a position in the newest-first order, and the page starts after that position using the new search and tag.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Search bookmarks by title words (Priority: P1)
@@ -34,8 +42,8 @@ a word that appears in some of them, and confirming only those bookmarks come ba
 4. **Given** a bookmark titled "Postgres indexing guide", **When** the user searches for
    "indexing postgres", **Then** the bookmark is returned (every word must appear, in any order);
    **When** the user searches for "postgres backups", **Then** it is not returned.
-5. **Given** any state, **When** the user sends a search that is empty, contains only spaces or
-   punctuation, or is longer than 200 characters, **Then** nothing is searched and the user
+5. **Given** any state, **When** the user sends a search that is missing, empty, contains only
+   separators (for example "  -- !"), or is longer than 200 characters, **Then** nothing is searched and the user
    receives an error explaining what is allowed.
 
 ---
@@ -100,15 +108,20 @@ following the next-page token until it runs out, confirming every match is seen 
   the same bookmarks.
 - Leading, trailing and repeated spaces in the search are ignored; "  postgres   guide " is the same
   search as "postgres guide".
-- Punctuation in the search or the title separates words: a title "FastAPI: a tutorial" contains
-  the words "fastapi", "a" and "tutorial".
+- A word is an unbroken run of letters (in any alphabet) and digits; every other character,
+  including spaces, punctuation, hyphens and apostrophes, separates words, in both the search and
+  the title. A title "FastAPI: a tutorial" contains the words "fastapi", "a" and "tutorial"; a
+  title "Spec-Kit guide" contains "spec", "kit" and "guide", so the search "spec-kit" finds it.
 - A search word matches only a whole title word: "postgres" finds "Postgres backups", but "post"
   does not find "Postgres" and "gres" does not find "Postgres".
-- A search with no words left after removing spaces and punctuation is rejected with a validation
+- A search with no words left after removing separators is rejected with a validation
   error, not treated as "match everything".
 - A search for a word that appears in a bookmark's link or tags but not its title does not match
   that bookmark; only the title is searched.
 - Bookmarks saved or deleted between page requests never cause a match to be repeated or skipped.
+- A next-page token is only a position in the newest-first order. Sent with different search words
+  or a different tag, it is accepted and the page starts after that position using the new search
+  and tag, exactly as the bookmark list treats its token.
 - A deleted bookmark no longer appears in search results.
 
 ## Requirements *(mandatory)*
@@ -116,10 +129,12 @@ following the next-page token until it runs out, confirming every match is seen 
 ### Functional Requirements
 
 - **FR-001**: System MUST let a user search their bookmarks by one or more words, matching against
-  the bookmark's title only.
+  the bookmark's title only. Search is a request of its own that requires search words; the
+  existing bookmark list request is not changed and gains no search option.
 - **FR-002**: Search MUST ignore letter case in both the search words and the titles.
-- **FR-003**: System MUST split the search into words on spaces and punctuation, ignoring leading,
-  trailing and repeated separators. When the search has several words, a bookmark MUST match only
+- **FR-003**: System MUST split both the search and each title into words, where a word is an
+  unbroken run of letters (any alphabet) and digits and every other character separates words,
+  ignoring leading, trailing and repeated separators. When the search has several words, a bookmark MUST match only
   when its title contains all of the words, in any order.
 - **FR-004**: A search word MUST match only a whole word of the title, never part of a longer word
   ("post" does not match "Postgres").
@@ -132,7 +147,7 @@ following the next-page token until it runs out, confirming every match is seen 
   (none on the last page). Paging with the token MUST NOT repeat or skip bookmarks when bookmarks
   are saved or deleted between requests (Constitution VI).
 - **FR-008**: System MUST reject a search that is missing, empty, has no words after removing
-  spaces and punctuation, or is longer than 200 characters, and MUST explain what is allowed.
+  separators, or is longer than 200 characters, and MUST explain what is allowed.
 - **FR-009**: System MUST reject the same invalid paging and tag inputs the bookmark list rejects
   (page size outside 1 to 100, malformed next-page token, the removed offset option, invalid tag),
   with the same errors.
