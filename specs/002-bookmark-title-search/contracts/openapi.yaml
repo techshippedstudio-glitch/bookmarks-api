@@ -1,0 +1,83 @@
+openapi: 3.1.0
+info:
+  title: Bookmarks API - title search
+  version: 0.2.0
+  description: >
+    Adds GET /bookmarks/search to the Bookmarks API. Every other path and schema is unchanged and
+    defined in specs/001-bookmarks-api/contracts/openapi.yaml; BookmarkPage and ErrorResponse
+    below are copied from it for reference. The running service generates /openapi.json from the
+    Pydantic models; this file is the design contract those models must match.
+paths:
+  /bookmarks/search:
+    get:
+      summary: Search bookmarks by words in the title, newest first
+      operationId: searchBookmarks
+      description: >
+        Returns bookmarks whose title contains every word of q as a whole word, ignoring letter
+        case. A word is an unbroken run of letters and digits; every other character separates
+        words. Optionally narrowed by tag. Paged exactly like GET /bookmarks.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 200 }
+          description: Search words; must contain at least one letter or digit
+        - name: tag
+          in: query
+          required: false
+          schema: { type: string }
+          description: Only bookmarks carrying this tag (normalized like tags)
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+          description: The next_cursor from the previous page; omit for the first page
+      responses:
+        '200':
+          description: A page of matching bookmarks; total counts all matches
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookmarkPage' }
+        '422':
+          description: Missing, empty, word-less or too long q; invalid tag, limit or cursor; or the removed offset parameter
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+components:
+  schemas:
+    Bookmark:
+      type: object
+      required: [id, url, title, tags, created_at]
+      properties:
+        id: { type: integer }
+        url: { type: string }
+        title: { type: string }
+        tags: { type: array, items: { type: string } }
+        created_at: { type: string, format: date-time }
+    BookmarkPage:
+      type: object
+      required: [items, total, limit, next_cursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Bookmark' } }
+        total: { type: integer, description: Number of bookmarks matching the search and tag }
+        limit: { type: integer }
+        next_cursor: { type: [string, 'null'], description: Pass as cursor to get the next page; null on the last page }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [validation_error, not_found, duplicate_url, internal_error, bad_request, method_not_allowed, conflict, http_error]
+            message: { type: string }
+            details:
+              description: Field errors for validation_error, e.g. [{"field": "query.q", "message": "..."}]
+              type: [object, array, 'null']
