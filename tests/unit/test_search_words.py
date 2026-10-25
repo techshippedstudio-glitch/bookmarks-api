@@ -44,3 +44,14 @@ def test_limit_is_200_characters_as_sent() -> None:
 @pytest.mark.parametrize("word", ["%", "_", "/", "*", "50%_off", "a/b"])
 def test_pattern_characters_are_ordinary(word: str) -> None:
     assert search_words(word) == [word]
+
+
+def test_nul_character_is_rejected() -> None:
+    with pytest.raises(ValueError, match="control"):
+        search_words("a\x00b")
+
+
+def test_words_are_merged_only_when_they_match_identically() -> None:
+    # "ß" lowercases to itself but casefolds to "ss"; the database match uses lowercase.
+    assert search_words("Straße STRASSE") == ["Straße", "STRASSE"]
+    assert search_words("Straße STRAßE") == ["Straße"]

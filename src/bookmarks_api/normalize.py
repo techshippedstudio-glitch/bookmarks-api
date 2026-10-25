@@ -67,15 +67,20 @@ def search_words(q: str) -> list[str]:
     """Split a title search into its distinct words (specs/002-bookmark-title-search).
 
     Words are separated by whitespace; repeats are dropped ignoring letter case, keeping the first
-    spelling and the order of first appearance. The 200-character limit applies to ``q`` as sent.
-    Raises ValueError when ``q`` is too long or has no non-space character.
+    spelling and the order of first appearance. Repeats are compared with ``str.lower()``, the
+    same folding the database's case-insensitive match uses (``casefold()`` would merge words
+    such as "Straße" and "STRASSE" that the database treats as different). The 200-character
+    limit applies to ``q`` as sent. Raises ValueError when ``q`` is too long, contains a NUL
+    control character (PostgreSQL cannot take it as a parameter), or has no non-space character.
     """
     if len(q) > MAX_SEARCH_LENGTH:
         raise ValueError(f"The search can be 1 to {MAX_SEARCH_LENGTH} characters long.")
+    if "\x00" in q:
+        raise ValueError("The search must not contain the NUL control character.")
     words: list[str] = []
     seen: set[str] = set()
     for word in q.split():
-        key = word.casefold()
+        key = word.lower()
         if key not in seen:
             seen.add(key)
             words.append(word)

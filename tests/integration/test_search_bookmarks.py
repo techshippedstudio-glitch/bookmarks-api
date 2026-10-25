@@ -155,3 +155,21 @@ def test_search_changes_no_bookmark(client: TestClient, row_count) -> None:
 
     assert client.get("/bookmarks").json() == before
     assert row_count() == 1
+
+
+def test_nul_character_is_a_validation_error_not_a_server_error(client: TestClient) -> None:
+    response = client.get("/bookmarks/search", params={"q": "a\x00b"})
+
+    assert response.status_code == 422
+    error = response.json()["error"]
+    assert error["code"] == "validation_error"
+    assert error["details"][0]["field"] == "query.q"
+
+
+@pytest.mark.parametrize("q", ["Straße STRASSE", "STRASSE Straße"])
+def test_word_order_never_changes_results(client: TestClient, q: str) -> None:
+    save(client, "Straße notes")
+    save(client, "STRASSE map")
+    both = save(client, "Straße or STRASSE")
+
+    assert [item["id"] for item in search(client, q=q)["items"]] == [both]

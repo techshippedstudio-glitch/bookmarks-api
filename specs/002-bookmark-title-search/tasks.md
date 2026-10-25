@@ -184,5 +184,5 @@ Task: "README endpoint table in README.md"
 
 ## Phase 7: Convergence
 
-- [ ] T016 CRITICAL: Reject a search `q` that contains a NUL character with 422 `validation_error` on `query.q` (validator in `src/bookmarks_api/normalize.py` `search_words()` / `src/bookmarks_api/schemas.py` `BookmarkSearchQuery`) instead of the current 500 `internal_error`, and add a case to `tests/integration/test_search_bookmarks.py` per Constitution III (contradicts)
-- [ ] T017 De-duplicate search words in `src/bookmarks_api/normalize.py` `search_words()` with `str.lower()` (the folding PostgreSQL `ILIKE` uses) instead of `str.casefold()`, so words such as "Straße" and "STRASSE" are both kept and word order never changes results; add unit and integration tests per FR-001 (partial)
+- [X] T016 CRITICAL: Reject a search `q` that contains a NUL character with 422 `validation_error` on `query.q` (validator in `src/bookmarks_api/normalize.py` `search_words()` / `src/bookmarks_api/schemas.py` `BookmarkSearchQuery`) instead of the current 500 `internal_error`, and add a case to `tests/integration/test_search_bookmarks.py` per Constitution III (contradicts)
+- [X] T017 De-duplicate search words in `src/bookmarks_api/normalize.py` `search_words()` with `str.lower()` (the folding PostgreSQL `ILIKE` uses) instead of `str.casefold()`, so words such as "Straße" and "STRASSE" are both kept and word order never changes results; add unit and integration tests per FR-001 (partial)
