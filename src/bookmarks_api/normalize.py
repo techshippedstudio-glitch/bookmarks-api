@@ -58,3 +58,27 @@ def normalize_tag(tag: str) -> str:
 def normalize_tags(tags: Iterable[str]) -> list[str]:
     """Normalize each tag, drop duplicates and return them sorted."""
     return sorted({normalize_tag(tag) for tag in tags})
+
+
+MAX_SEARCH_LENGTH = 200
+
+
+def search_words(q: str) -> list[str]:
+    """Split a title search into its distinct words (specs/002-bookmark-title-search).
+
+    Words are separated by whitespace; repeats are dropped ignoring letter case, keeping the first
+    spelling and the order of first appearance. The 200-character limit applies to ``q`` as sent.
+    Raises ValueError when ``q`` is too long or has no non-space character.
+    """
+    if len(q) > MAX_SEARCH_LENGTH:
+        raise ValueError(f"The search can be 1 to {MAX_SEARCH_LENGTH} characters long.")
+    words: list[str] = []
+    seen: set[str] = set()
+    for word in q.split():
+        key = word.casefold()
+        if key not in seen:
+            seen.add(key)
+            words.append(word)
+    if not words:
+        raise ValueError("The search must contain at least one non-space character.")
+    return words

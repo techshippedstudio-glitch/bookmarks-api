@@ -10,7 +10,14 @@ from bookmarks_api import repository
 from bookmarks_api.cursor import decode_cursor, encode_cursor
 from bookmarks_api.db import get_session
 from bookmarks_api.errors import ErrorResponse
-from bookmarks_api.schemas import Bookmark, BookmarkCreate, BookmarkListQuery, BookmarkPage
+from bookmarks_api.normalize import search_words
+from bookmarks_api.schemas import (
+    Bookmark,
+    BookmarkCreate,
+    BookmarkListQuery,
+    BookmarkPage,
+    BookmarkSearchQuery,
+)
 
 router = APIRouter(prefix="/bookmarks", tags=["bookmarks"])
 
@@ -65,6 +72,34 @@ def list_bookmarks(
     after = decode_cursor(query.cursor) if query.cursor is not None else None
     rows, total, has_more = repository.list_bookmarks(
         session, limit=query.limit, after=after, tag=query.tag
+    )
+    next_cursor = encode_cursor(rows[-1].created_at, rows[-1].id) if has_more else None
+    return BookmarkPage(
+        items=[Bookmark.model_validate(row) for row in rows],
+        total=total,
+        limit=query.limit,
+        next_cursor=next_cursor,
+    )
+
+
+@router.get(
+    "/search",
+    response_model=BookmarkPage,
+    summary="Search bookmarks by title words, newest first",
+    responses=ERROR_422,
+    dependencies=[Depends(reject_offset)],
+)
+def search_bookmarks(
+    session: SessionDep,
+    query: Annotated[BookmarkSearchQuery, Query()],
+) -> BookmarkPage:
+    after = decode_cursor(query.cursor) if query.cursor is not None else None
+    rows, total, has_more = repository.list_bookmarks(
+        session,
+        limit=query.limit,
+        after=after,
+        tag=query.tag,
+        title_words=search_words(query.q),
     )
     next_cursor = encode_cursor(rows[-1].created_at, rows[-1].id) if has_more else None
     return BookmarkPage(

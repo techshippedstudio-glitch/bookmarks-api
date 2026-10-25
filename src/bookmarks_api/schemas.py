@@ -5,7 +5,14 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from bookmarks_api.cursor import decode_cursor
-from bookmarks_api.normalize import MAX_URL_LENGTH, normalize_tag, normalize_tags, normalize_url
+from bookmarks_api.normalize import (
+    MAX_SEARCH_LENGTH,
+    MAX_URL_LENGTH,
+    normalize_tag,
+    normalize_tags,
+    normalize_url,
+    search_words,
+)
 
 MAX_TAGS = 10
 
@@ -80,3 +87,19 @@ class BookmarkListQuery(BaseModel):
     @classmethod
     def _normalize_tag(cls, value: str | None) -> str | None:
         return normalize_tag(value) if value is not None else None
+
+
+class BookmarkSearchQuery(BookmarkListQuery):
+    """Query parameters for GET /bookmarks/search: the list's parameters plus a required ``q``."""
+
+    q: str = Field(
+        min_length=1,
+        max_length=MAX_SEARCH_LENGTH,
+        description="One or more words separated by spaces; every word must appear in the title.",
+    )
+
+    @field_validator("q")
+    @classmethod
+    def _check_q(cls, value: str) -> str:
+        search_words(value)  # raises ValueError for a blank search
+        return value

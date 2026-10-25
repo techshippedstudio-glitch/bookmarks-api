@@ -24,6 +24,8 @@ htmlcov/
 .idea/
 .DS_Store
 Thumbs.db
+*.tmp
+*.swp
 
 # Agent folder: Claude Code can keep local settings and tokens in .claude/.
 # Only the Spec Kit skills are tracked, so viewers can see what Spec Kit generated.

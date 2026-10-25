@@ -41,6 +41,7 @@ def list_bookmarks(
     limit: int,
     after: tuple[datetime, int] | None = None,
     tag: str | None = None,
+    title_words: list[str] | None = None,
 ) -> tuple[list[BookmarkRow], int, bool]:
     """Return one page of bookmarks, newest first, the total matching the filter, and whether
     more pages follow.
@@ -48,8 +49,13 @@ def list_bookmarks(
     Keyset pagination (Constitution VI): the page starts strictly after the (created_at, id)
     position in ``after``, so saves and deletes between requests never shift the page. The
     row comparison matches the (created_at DESC, id DESC) index, so every page is a range scan.
+
+    ``title_words`` (title search): the title must contain every word, ignoring letter case;
+    ``autoescape`` makes ``%``, ``_`` and the escape character match literally.
     """
     conditions = [BookmarkRow.tags.contains([tag])] if tag else []
+    for word in title_words or []:
+        conditions.append(BookmarkRow.title.icontains(word, autoescape=True))
     total = session.scalar(select(func.count()).select_from(BookmarkRow).where(*conditions))
     page_conditions = list(conditions)
     if after is not None:

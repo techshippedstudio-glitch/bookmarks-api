@@ -28,7 +28,7 @@ its own.
 
 **Purpose**: Confirm the starting point; this feature adds no dependency, table or migration
 
-- [ ] T001 Run the existing suite (`uv run pytest`) with `TEST_DATABASE_URL` exported and confirm it passes before any change; confirm `pyproject.toml` and `uv.lock` need no change (plan.md, Constitution IV: no new dependency)
+- [X] T001 Run the existing suite (`uv run pytest`) with `TEST_DATABASE_URL` exported and confirm it passes before any change; confirm `pyproject.toml` and `uv.lock` need no change (plan.md, Constitution IV: no new dependency)
 
 ---
 
@@ -38,10 +38,10 @@ its own.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T002 [P] Write unit tests in `tests/unit/test_search_words.py` for `search_words()`: `"postgres"` → `["postgres"]`; `"  Postgres   guide postgres "` → `["Postgres", "guide"]` (split on whitespace, empty pieces dropped, repeats dropped case-insensitively, first spelling kept, order of first appearance); tabs count as whitespace; `"c"` → `["c"]` (no minimum word length); `""` and `"   "` raise `ValueError`; a 201-character string raises `ValueError` and a 200-character one does not ("`q` 1 to 200 characters; must contain a non-space character", data-model.md); `%`, `_` and `/` are kept as ordinary characters
-- [ ] T003 Add `MAX_SEARCH_LENGTH = 200` and `search_words(q: str) -> list[str]` to `src/bookmarks_api/normalize.py`: reject `len(q) > 200` and blank input with `ValueError` messages that say what is allowed ("1 to 200 characters", "at least one non-space character"); split with `str.split()`, de-duplicate by `casefold()` keeping the first spelling (makes T002 pass)
-- [ ] T004 Add `BookmarkSearchQuery(BookmarkListQuery)` to `src/bookmarks_api/schemas.py` with `q: str = Field(min_length=1, max_length=200, description="One or more words separated by spaces; every word must appear in the title.")` and a `field_validator("q")` that calls `search_words()` so a blank `q` becomes a validation error on `query.q`; inherit `limit` (`ge=1, le=100`, default 20), `cursor` (decoded or rejected) and `tag` (normalized like tags) unchanged (Constitution I)
-- [ ] T005 Extend `list_bookmarks()` in `src/bookmarks_api/repository.py` with a keyword argument `title_words: list[str] | None = None`; for each word add `BookmarkRow.title.icontains(word, autoescape=True)` to the shared `conditions` list so it applies to both the `COUNT(*)` total and the page query; keep ordering `created_at DESC, id DESC`, the `(created_at, id) <` keyset condition and `limit + 1` unchanged (research.md, "Ordering, paging and totals")
+- [X] T002 [P] Write unit tests in `tests/unit/test_search_words.py` for `search_words()`: `"postgres"` → `["postgres"]`; `"  Postgres   guide postgres "` → `["Postgres", "guide"]` (split on whitespace, empty pieces dropped, repeats dropped case-insensitively, first spelling kept, order of first appearance); tabs count as whitespace; `"c"` → `["c"]` (no minimum word length); `""` and `"   "` raise `ValueError`; a 201-character string raises `ValueError` and a 200-character one does not ("`q` 1 to 200 characters; must contain a non-space character", data-model.md); `%`, `_` and `/` are kept as ordinary characters
+- [X] T003 Add `MAX_SEARCH_LENGTH = 200` and `search_words(q: str) -> list[str]` to `src/bookmarks_api/normalize.py`: reject `len(q) > 200` and blank input with `ValueError` messages that say what is allowed ("1 to 200 characters", "at least one non-space character"); split with `str.split()`, de-duplicate by `casefold()` keeping the first spelling (makes T002 pass)
+- [X] T004 Add `BookmarkSearchQuery(BookmarkListQuery)` to `src/bookmarks_api/schemas.py` with `q: str = Field(min_length=1, max_length=200, description="One or more words separated by spaces; every word must appear in the title.")` and a `field_validator("q")` that calls `search_words()` so a blank `q` becomes a validation error on `query.q`; inherit `limit` (`ge=1, le=100`, default 20), `cursor` (decoded or rejected) and `tag` (normalized like tags) unchanged (Constitution I)
+- [X] T005 Extend `list_bookmarks()` in `src/bookmarks_api/repository.py` with a keyword argument `title_words: list[str] | None = None`; for each word add `BookmarkRow.title.icontains(word, autoescape=True)` to the shared `conditions` list so it applies to both the `COUNT(*)` total and the page query; keep ordering `created_at DESC, id DESC`, the `(created_at, id) <` keyset condition and `limit + 1` unchanged (research.md, "Ordering, paging and totals")
 
 **Checkpoint**: Foundation ready; user story work can begin
 
@@ -58,12 +58,12 @@ confirm only titles containing every word come back, newest first, with the righ
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T006 [P] [US1] Write integration tests in `tests/integration/test_search_bookmarks.py` for spec User Story 1: scenario 1 ("postgres" returns "Advanced Postgres tuning" then "Postgres indexing guide", `total` 2); scenario 2 ("fastapi", "FASTAPI", "FastAPI" all find "FastAPI Tutorial"); scenario 3 ("postgres guide" returns only "Postgres indexing guide"; words in any order); scenario 4 (no match → 200 `{"items": [], "total": 0, "limit": 20, "next_cursor": null}`); scenario 5 (`q=""`, `q="   "`, `q` of 201 characters and a missing `q` each return 422 `validation_error` with `details[0].field == "query.q"`); edge cases: "post" finds "Postgres" (substring), "c" matches every title containing c, `%`, `_`, `*` and `/` in `q` match only titles containing that literal character, accented capitals fold too ("ÉCOLE" finds "école", spec Assumptions), repeating a word changes nothing; each result item has the same fields and values as in `GET /bookmarks` (FR-010); a search changes no bookmark (FR-011)
+- [X] T006 [P] [US1] Write integration tests in `tests/integration/test_search_bookmarks.py` for spec User Story 1: scenario 1 ("postgres" returns "Advanced Postgres tuning" then "Postgres indexing guide", `total` 2); scenario 2 ("fastapi", "FASTAPI", "FastAPI" all find "FastAPI Tutorial"); scenario 3 ("postgres guide" returns only "Postgres indexing guide"; words in any order); scenario 4 (no match → 200 `{"items": [], "total": 0, "limit": 20, "next_cursor": null}`); scenario 5 (`q=""`, `q="   "`, `q` of 201 characters and a missing `q` each return 422 `validation_error` with `details[0].field == "query.q"`); edge cases: "post" finds "Postgres" (substring), "c" matches every title containing c, `%`, `_`, `*` and `/` in `q` match only titles containing that literal character, accented capitals fold too ("ÉCOLE" finds "école", spec Assumptions), repeating a word changes nothing; each result item has the same fields and values as in `GET /bookmarks` (FR-010); a search changes no bookmark (FR-011)
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Add `GET /bookmarks/search` to `src/bookmarks_api/routes.py`, declared before `DELETE /{bookmark_id}`: `response_model=BookmarkPage`, `summary="Search bookmarks by title words, newest first"`, `responses=ERROR_422`, `dependencies=[Depends(reject_offset)]`, query bound as `Annotated[BookmarkSearchQuery, Query()]`; decode the cursor, call `repository.list_bookmarks(session, limit=..., after=..., tag=query.tag, title_words=search_words(query.q))` and build the page and `next_cursor` exactly as `list_bookmarks` does (makes T006 pass)
-- [ ] T008 [US1] Extend `test_openapi_documents_every_operation` in `tests/integration/test_errors.py` with `("/bookmarks/search", "get")`: summary present, 422 response is `ErrorResponse`, 200 response is `BookmarkPage`, and a required query parameter `q` is listed (Constitution I quality gate)
+- [X] T007 [US1] Add `GET /bookmarks/search` to `src/bookmarks_api/routes.py`, declared before `DELETE /{bookmark_id}`: `response_model=BookmarkPage`, `summary="Search bookmarks by title words, newest first"`, `responses=ERROR_422`, `dependencies=[Depends(reject_offset)]`, query bound as `Annotated[BookmarkSearchQuery, Query()]`; decode the cursor, call `repository.list_bookmarks(session, limit=..., after=..., tag=query.tag, title_words=search_words(query.q))` and build the page and `next_cursor` exactly as `list_bookmarks` does (makes T006 pass)
+- [X] T008 [US1] Extend `test_openapi_documents_every_operation` in `tests/integration/test_errors.py` with `("/bookmarks/search", "get")`: summary present, 422 response is `ErrorResponse`, 200 response is `BookmarkPage`, and a required query parameter `q` is listed (Constitution I quality gate)
 
 **Checkpoint**: User Story 1 is fully functional and testable on its own
 
@@ -78,11 +78,11 @@ confirm only titles containing every word come back, newest first, with the righ
 
 ### Tests for User Story 2
 
-- [ ] T009 [P] [US2] Write integration tests in `tests/integration/test_search_with_tag.py` for spec User Story 2: scenario 1 ("indexing" with `tag=postgres` returns only "Indexing basics" tagged postgres); scenario 2 (`q=INDEXING&tag=Postgres` still finds it); scenario 3 (matching titles but an absent tag → empty list, `total` 0); an invalid tag filter (`tag="bad tag!"`) returns 422 `validation_error` on `query.tag`
+- [X] T009 [P] [US2] Write integration tests in `tests/integration/test_search_with_tag.py` for spec User Story 2: scenario 1 ("indexing" with `tag=postgres` returns only "Indexing basics" tagged postgres); scenario 2 (`q=INDEXING&tag=Postgres` still finds it); scenario 3 (matching titles but an absent tag → empty list, `total` 0); an invalid tag filter (`tag="bad tag!"`) returns 422 `validation_error` on `query.tag`
 
 ### Implementation for User Story 2
 
-- [ ] T010 [US2] Verification task: T007 already delivers this; confirm `GET /bookmarks/search` in `src/bookmarks_api/routes.py` passes the normalized `query.tag` to `repository.list_bookmarks` together with `title_words` so both conditions are ANDed in the count and the page; fix if T009 fails
+- [X] T010 [US2] Verification task: T007 already delivers this; confirm `GET /bookmarks/search` in `src/bookmarks_api/routes.py` passes the normalized `query.tag` to `repository.list_bookmarks` together with `title_words` so both conditions are ANDed in the count and the page; fix if T009 fails
 
 **Checkpoint**: User Stories 1 and 2 both work on their own
 
@@ -97,12 +97,12 @@ end and confirm every match appears once, newest first.
 
 ### Tests for User Story 3
 
-- [ ] T011 [P] [US3] Write integration tests in `tests/integration/test_search_paging.py` for spec User Story 3: scenario 1 (25 "python" titles and 5 others: first page 20 newest matches, `total` 25, `next_cursor` set; second page the remaining 5, `next_cursor` null); scenario 2 (a new matching bookmark saved before every page request, paging with `limit=10` sees every original match exactly once with no gaps — Constitution VI quality gate); a matching bookmark deleted between pages skips nothing; exactly 20 matches → one page with no `next_cursor`; scenario 3 (`limit=101`, `limit=0`, malformed cursor → 422 `validation_error`, same fields as `GET /bookmarks`); `offset` → 422 on `query.offset` with a message pointing to `cursor`; a cursor from one search sent with a different `q` returns the matches of the new `q` after that position (Clarifications)
-- [ ] T012 [P] [US3] Add a timing test in `tests/integration/test_search_paging.py` for SC-006: insert 10,000 bookmarks in one statement through the test engine, then run 20 searches (mixed one-word, two-word and with-tag) through the API and assert at least 19 (95%) answer in under 1 second
+- [X] T011 [P] [US3] Write integration tests in `tests/integration/test_search_paging.py` for spec User Story 3: scenario 1 (25 "python" titles and 5 others: first page 20 newest matches, `total` 25, `next_cursor` set; second page the remaining 5, `next_cursor` null); scenario 2 (a new matching bookmark saved before every page request, paging with `limit=10` sees every original match exactly once with no gaps — Constitution VI quality gate); a matching bookmark deleted between pages skips nothing; exactly 20 matches → one page with no `next_cursor`; scenario 3 (`limit=101`, `limit=0`, malformed cursor → 422 `validation_error`, same fields as `GET /bookmarks`); `offset` → 422 on `query.offset` with a message pointing to `cursor`; a cursor from one search sent with a different `q` returns the matches of the new `q` after that position (Clarifications)
+- [X] T012 [P] [US3] Add a timing test in `tests/integration/test_search_paging.py` for SC-006: insert 10,000 bookmarks in one statement through the test engine, then run 20 searches (mixed one-word, two-word and with-tag) through the API and assert at least 19 (95%) answer in under 1 second
 
 ### Implementation for User Story 3
 
-- [ ] T013 [US3] Verification task: T007 already delivers this; confirm `GET /bookmarks/search` in `src/bookmarks_api/routes.py` reuses `encode_cursor`/`decode_cursor`, the list's `limit` bounds and `reject_offset` so T011 and T012 pass; fix any difference from `GET /bookmarks`
+- [X] T013 [US3] Verification task: T007 already delivers this; confirm `GET /bookmarks/search` in `src/bookmarks_api/routes.py` reuses `encode_cursor`/`decode_cursor`, the list's `limit` bounds and `reject_offset` so T011 and T012 pass; fix any difference from `GET /bookmarks`
 
 **Checkpoint**: All user stories are independently functional
 
@@ -112,8 +112,8 @@ end and confirm every match appears once, newest first.
 
 **Purpose**: Documentation and final validation
 
-- [ ] T014 [P] Add `GET /bookmarks/search?q=&tag=&limit=&cursor=` to the endpoint table in `README.md` ("Search titles: every word, any letter case, newest first; pages like the list")
-- [ ] T015 Run the full suite on Python 3.13 (`uv run pytest`) and the manual checks in `specs/002-bookmark-title-search/quickstart.md`; all existing and new tests pass (SC-004, Constitution quality gates)
+- [X] T014 [P] Add `GET /bookmarks/search?q=&tag=&limit=&cursor=` to the endpoint table in `README.md` ("Search titles: every word, any letter case, newest first; pages like the list")
+- [X] T015 Run the full suite on Python 3.13 (`uv run pytest`) and the manual checks in `specs/002-bookmark-title-search/quickstart.md`; all existing and new tests pass (SC-004, Constitution quality gates)
 
 ---
 

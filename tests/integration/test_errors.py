@@ -67,7 +67,12 @@ def test_unexpected_errors_hide_internals(client: TestClient, monkeypatch) -> No
 
 @pytest.mark.parametrize(
     ("path", "method"),
-    [("/bookmarks", "post"), ("/bookmarks", "get"), ("/bookmarks/{bookmark_id}", "delete")],
+    [
+        ("/bookmarks", "post"),
+        ("/bookmarks", "get"),
+        ("/bookmarks/search", "get"),
+        ("/bookmarks/{bookmark_id}", "delete"),
+    ],
 )
 def test_openapi_documents_every_operation(client: TestClient, path: str, method: str) -> None:
     spec = client.get("/openapi.json").json()
@@ -87,3 +92,7 @@ def test_openapi_documents_every_operation(client: TestClient, path: str, method
     if method == "get":
         success = operation["responses"]["200"]["content"]["application/json"]["schema"]
         assert success["$ref"].endswith("/BookmarkPage")
+    if path == "/bookmarks/search":
+        q = next(p for p in operation["parameters"] if p["name"] == "q")
+        assert q["in"] == "query"
+        assert q["required"] is True
