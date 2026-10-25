@@ -43,8 +43,9 @@ the letter case of the search or the title.
    search word must appear in the title, in any order).
 4. **Given** bookmarks exist, **When** the user searches for a word no title contains, **Then** an
    empty list with a total count of 0 is returned, not an error.
-5. **Given** any state, **When** the user sends a search that is empty or contains only spaces, or
-   is longer than 200 characters, **Then** the user receives an error explaining what is allowed.
+5. **Given** any state, **When** the user sends no search, a search that is empty or contains only
+   spaces, or one longer than 200 characters, **Then** the user receives an error explaining what is
+   allowed.
 
 ---
 
@@ -106,7 +107,7 @@ newest first.
 
 - A search with several words matches a bookmark only when every word appears in its title; the
   order of the words does not matter, and repeating a word changes nothing.
-- Spaces at the start or end of a search, and repeated spaces between words, are ignored.
+- Whitespace at the start or end of a search, and repeated whitespace between words, is ignored.
 - A search that is empty or only spaces is rejected with a validation error; it is not treated as
   "no search".
 - A search longer than 200 characters (the longest possible title) is rejected with a validation
@@ -132,10 +133,11 @@ newest first.
   only bookmarks whose title contains every search word; a word matches anywhere in the title,
   including as part of a longer word.
 - **FR-002**: Search MUST ignore letter case in both the search words and the titles.
-- **FR-003**: System MUST split a search into words on spaces, ignoring leading, trailing and
-  repeated spaces.
-- **FR-004**: System MUST reject a search that is empty or only spaces, or longer than 200
-  characters, with a validation error that explains what is allowed.
+- **FR-003**: System MUST split a search into words on whitespace (spaces, tabs and line breaks),
+  ignoring leading, trailing and repeated whitespace.
+- **FR-004**: System MUST reject a search that is missing, empty or only whitespace, or longer than
+  200 characters, with a validation error that explains what is allowed. The 200-character limit
+  applies to the search exactly as sent, including any surrounding spaces.
 - **FR-005**: System MUST return search results ordered by saved time, most recent first, the same
   order as the bookmark list.
 - **FR-006**: System MUST allow a search to be combined with the existing tag filter, returning only
@@ -183,7 +185,7 @@ newest first.
 - The single-user model of the existing bookmarks API is unchanged: all bookmarks belong to one
   user, so a search covers all bookmarks.
 - Only titles are searched; links and tags are not searched by text (the tag filter covers tags).
-- Words are separated by spaces only; there is no support for quoted phrases, "or", exclusion or
+- Words are separated by whitespace; there is no support for quoted phrases, "or", exclusion or
   other search operators in this version.
 - There is no relevance ranking: results are always newest first, as the feature request says.
 - Letter case is ignored for ordinary letters including accented ones; matching does not ignore

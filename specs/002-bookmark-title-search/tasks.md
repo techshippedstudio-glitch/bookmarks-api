@@ -58,7 +58,7 @@ confirm only titles containing every word come back, newest first, with the righ
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T006 [P] [US1] Write integration tests in `tests/integration/test_search_bookmarks.py` for spec User Story 1: scenario 1 ("postgres" returns "Advanced Postgres tuning" then "Postgres indexing guide", `total` 2); scenario 2 ("fastapi", "FASTAPI", "FastAPI" all find "FastAPI Tutorial"); scenario 3 ("postgres guide" returns only "Postgres indexing guide"; words in any order); scenario 4 (no match → 200 `{"items": [], "total": 0, "limit": 20, "next_cursor": null}`); scenario 5 (`q=""`, `q="   "`, `q` of 201 characters and a missing `q` each return 422 `validation_error` with `details[0].field == "query.q"`); edge cases: "post" finds "Postgres" (substring), "c" matches every title containing c, `%`, `_` and `/` in `q` match only titles containing that literal character, repeating a word changes nothing; each result item has the same fields and values as in `GET /bookmarks` (FR-010); a search changes no bookmark (FR-011)
+- [ ] T006 [P] [US1] Write integration tests in `tests/integration/test_search_bookmarks.py` for spec User Story 1: scenario 1 ("postgres" returns "Advanced Postgres tuning" then "Postgres indexing guide", `total` 2); scenario 2 ("fastapi", "FASTAPI", "FastAPI" all find "FastAPI Tutorial"); scenario 3 ("postgres guide" returns only "Postgres indexing guide"; words in any order); scenario 4 (no match → 200 `{"items": [], "total": 0, "limit": 20, "next_cursor": null}`); scenario 5 (`q=""`, `q="   "`, `q` of 201 characters and a missing `q` each return 422 `validation_error` with `details[0].field == "query.q"`); edge cases: "post" finds "Postgres" (substring), "c" matches every title containing c, `%`, `_`, `*` and `/` in `q` match only titles containing that literal character, accented capitals fold too ("ÉCOLE" finds "école", spec Assumptions), repeating a word changes nothing; each result item has the same fields and values as in `GET /bookmarks` (FR-010); a search changes no bookmark (FR-011)
 
 ### Implementation for User Story 1
 
@@ -82,7 +82,7 @@ confirm only titles containing every word come back, newest first, with the righ
 
 ### Implementation for User Story 2
 
-- [ ] T010 [US2] Confirm `GET /bookmarks/search` in `src/bookmarks_api/routes.py` passes the normalized `query.tag` to `repository.list_bookmarks` together with `title_words` so both conditions are ANDed in the count and the page; fix if T009 fails
+- [ ] T010 [US2] Verification task: T007 already delivers this; confirm `GET /bookmarks/search` in `src/bookmarks_api/routes.py` passes the normalized `query.tag` to `repository.list_bookmarks` together with `title_words` so both conditions are ANDed in the count and the page; fix if T009 fails
 
 **Checkpoint**: User Stories 1 and 2 both work on their own
 
@@ -102,7 +102,7 @@ end and confirm every match appears once, newest first.
 
 ### Implementation for User Story 3
 
-- [ ] T013 [US3] Confirm `GET /bookmarks/search` in `src/bookmarks_api/routes.py` reuses `encode_cursor`/`decode_cursor`, the list's `limit` bounds and `reject_offset` so T011 and T012 pass; fix any difference from `GET /bookmarks`
+- [ ] T013 [US3] Verification task: T007 already delivers this; confirm `GET /bookmarks/search` in `src/bookmarks_api/routes.py` reuses `encode_cursor`/`decode_cursor`, the list's `limit` bounds and `reject_offset` so T011 and T012 pass; fix any difference from `GET /bookmarks`
 
 **Checkpoint**: All user stories are independently functional
 
