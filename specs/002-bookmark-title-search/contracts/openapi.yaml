@@ -1,0 +1,84 @@
+openapi: 3.1.0
+info:
+  title: Bookmarks API - title search
+  version: 0.1.0
+  description: >
+    Adds GET /bookmarks/search to the Bookmarks API. The running service generates its own
+    OpenAPI document at /openapi.json from the Pydantic models; this file is the design contract
+    those models must match. BookmarkPage, Bookmark and ErrorResponse are the existing schemas from
+    specs/001-bookmarks-api/contracts/openapi.yaml, repeated here so the file stands alone.
+paths:
+  /bookmarks/search:
+    get:
+      summary: Search bookmarks by title words, newest first
+      operationId: searchBookmarks
+      description: >
+        Returns the bookmarks whose title contains every word of q (split on spaces), compared
+        without letter case; each word may match inside a longer word, and every character is
+        literal. Ordered and paged exactly like GET /bookmarks. The cursor marks a position only;
+        sent with a different q or tag it returns the matches after that position.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 200 }
+          description: One or more words separated by spaces; must not be blank
+        - name: tag
+          in: query
+          required: false
+          schema: { type: string }
+          description: Only bookmarks carrying this tag (normalized like tags)
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+          description: The next_cursor from the previous page; omit for the first page
+      responses:
+        '200':
+          description: A page of matching bookmarks
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookmarkPage' }
+        '422':
+          description: Missing, blank or too long q; invalid tag, limit or cursor; or the removed offset parameter
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+components:
+  schemas:
+    Bookmark:
+      type: object
+      required: [id, url, title, tags, created_at]
+      properties:
+        id: { type: integer }
+        url: { type: string, description: The link as the user gave it }
+        title: { type: string }
+        tags: { type: array, items: { type: string }, description: Normalized, unique, sorted }
+        created_at: { type: string, format: date-time }
+    BookmarkPage:
+      type: object
+      required: [items, total, limit, next_cursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Bookmark' } }
+        total: { type: integer, description: Number of bookmarks matching the search and filter }
+        limit: { type: integer }
+        next_cursor: { type: [string, 'null'], description: Pass as cursor to get the next page; null on the last page }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [validation_error, not_found, duplicate_url, internal_error, bad_request, method_not_allowed, conflict, http_error]
+            message: { type: string }
+            details:
+              description: Extra information, e.g. field errors
+              type: [object, array, 'null']
