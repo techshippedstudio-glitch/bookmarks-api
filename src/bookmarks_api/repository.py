@@ -2,12 +2,12 @@
 
 from datetime import datetime
 
-from sqlalchemy import delete, func, select, tuple_
+from sqlalchemy import bindparam, delete, func, select, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from bookmarks_api.errors import DuplicateUrlError, NotFoundError
-from bookmarks_api.models import BookmarkRow
+from bookmarks_api.models import BookmarkRow, title_words
 from bookmarks_api.normalize import normalize_url
 from bookmarks_api.schemas import BookmarkCreate
 
@@ -41,15 +41,25 @@ def list_bookmarks(
     limit: int,
     after: tuple[datetime, int] | None = None,
     tag: str | None = None,
+    search: str | None = None,
 ) -> tuple[list[BookmarkRow], int, bool]:
     """Return one page of bookmarks, newest first, the total matching the filter, and whether
     more pages follow.
+
+    ``search`` (specs/002-bookmark-title-search) keeps only bookmarks whose title contains every
+    word of the search as a whole word, ignoring case. PostgreSQL splits both the title and the
+    search with the same expression (models.title_words); the title side uses its GIN index. A
+    search the database splits into no words matches nothing.
 
     Keyset pagination (Constitution VI): the page starts strictly after the (created_at, id)
     position in ``after``, so saves and deletes between requests never shift the page. The
     row comparison matches the (created_at DESC, id DESC) index, so every page is a range scan.
     """
     conditions = [BookmarkRow.tags.contains([tag])] if tag else []
+    if search is not None:
+        search_words = title_words(bindparam("search", search))
+        conditions.append(title_words(BookmarkRow.title).contains(search_words))
+        conditions.append(func.cardinality(search_words) > 0)
     total = session.scalar(select(func.count()).select_from(BookmarkRow).where(*conditions))
     page_conditions = list(conditions)
     if after is not None:

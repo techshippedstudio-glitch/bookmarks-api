@@ -99,6 +99,7 @@ uv run pytest                                          # tests, against the book
 | --- | --- |
 | `POST /bookmarks` | Save `{"url", "title", "tags"}`; 409 if the link is already saved |
 | `GET /bookmarks?tag=&limit=&cursor=` | List newest first, 20 per page by default, optional tag filter; pass `next_cursor` from one page as `cursor` to get the next |
+| `GET /bookmarks/search?q=&tag=&limit=&cursor=` | Search titles: bookmarks whose title contains every word of `q` as a whole word, ignoring letter case, newest first; optional tag filter; pages like the list |
 | `DELETE /bookmarks/{id}` | Delete a bookmark |
 
 Every error has the same shape: `{"error": {"code", "message", "details"}}`.

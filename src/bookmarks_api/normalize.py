@@ -10,6 +10,7 @@ from urllib.parse import urlsplit, urlunsplit
 DEFAULT_PORTS = {"http": 80, "https": 443}
 TAG_PATTERN = re.compile(r"^[a-z0-9-]{1,30}$")
 MAX_URL_LENGTH = 2048
+MAX_SEARCH_LENGTH = 200
 
 
 def normalize_url(url: str) -> str:
@@ -58,3 +59,13 @@ def normalize_tag(tag: str) -> str:
 def normalize_tags(tags: Iterable[str]) -> list[str]:
     """Normalize each tag, drop duplicates and return them sorted."""
     return sorted({normalize_tag(tag) for tag in tags})
+
+
+def has_word_character(query: str) -> bool:
+    """Return True if a search has at least one letter or decimal digit (specs/002, FR-008).
+
+    This is only a pre-check so an empty search can be rejected with a clear error. The search
+    is split into words by the database with the same expression as titles (models.title_words),
+    never in Python, so both sides always agree on case and word boundaries.
+    """
+    return any(char.isalpha() or char.isdecimal() for char in query)

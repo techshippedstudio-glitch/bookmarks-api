@@ -5,7 +5,14 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from bookmarks_api.cursor import decode_cursor
-from bookmarks_api.normalize import MAX_URL_LENGTH, normalize_tag, normalize_tags, normalize_url
+from bookmarks_api.normalize import (
+    MAX_SEARCH_LENGTH,
+    MAX_URL_LENGTH,
+    has_word_character,
+    normalize_tag,
+    normalize_tags,
+    normalize_url,
+)
 
 MAX_TAGS = 10
 
@@ -80,3 +87,26 @@ class BookmarkListQuery(BaseModel):
     @classmethod
     def _normalize_tag(cls, value: str | None) -> str | None:
         return normalize_tag(value) if value is not None else None
+
+
+class BookmarkSearchQuery(BookmarkListQuery):
+    """Query parameters for GET /bookmarks/search (specs/002-bookmark-title-search).
+
+    Inherits limit, cursor and tag, with their rules and errors, from the bookmark list.
+    """
+
+    q: str = Field(
+        min_length=1,
+        max_length=MAX_SEARCH_LENGTH,
+        description=(
+            "Words to find in bookmark titles, at most 200 characters. A bookmark matches when its "
+            "title contains every word as a whole word, ignoring letter case."
+        ),
+    )
+
+    @field_validator("q")
+    @classmethod
+    def _check_q(cls, value: str) -> str:
+        if not has_word_character(value):
+            raise ValueError("q must contain at least one letter or digit.")
+        return value
