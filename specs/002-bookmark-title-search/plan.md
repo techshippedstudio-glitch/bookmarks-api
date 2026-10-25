@@ -12,10 +12,11 @@ Add a title search to the existing single-user bookmarks API: `GET /bookmarks/se
 returns the bookmarks whose titles contain every word of `q` as a whole word, ignoring letter
 case, newest first, optionally narrowed by the existing `tag` filter, and paged with the existing
 opaque keyset cursor (`limit`, `cursor`, `next_cursor`, `total`). A word is an unbroken run of
-letters and digits. The title's words are computed in PostgreSQL by one immutable expression
-(`array_remove(regexp_split_to_array(lower(title), '[^[:alnum:]]+'), '')`), matched with array
-containment (`@>`) against the search words, and served by a new GIN expression index added in
-Alembic revision 0002. No new table, column or dependency. The endpoint reuses the existing
+letters and digits. Both the title's words and the search's words are computed in PostgreSQL by
+one immutable expression (`title_words(x) = array_remove(regexp_split_to_array(lower(x),
+'[^[:alnum:]]+'), '')`), so the two sides always split and lowercase the same way; a title
+matches when `title_words(title) @> title_words(q)`. A new GIN expression index added in Alembic
+revision 0002 serves the title side. No new table, column or dependency. The endpoint reuses the existing
 routes, repository, cursor, schema and error modules; `GET /bookmarks` is unchanged.
 
 ## Technical Context
@@ -28,8 +29,12 @@ tests: pytest, httpx2. No new runtime or test dependency (plan input; Constituti
 **Storage**: PostgreSQL (16 locally, 18 in the repo's `docker-compose.yml`); existing `bookmarks`
 table; one new GIN expression index `ix_bookmarks_title_words` (migration `0002`)
 
-**Testing**: pytest; unit tests for the pure search-word function; integration tests through the
-HTTP API against the real test database (Constitution II), one file per user story
+**Testing**: pytest; unit tests for the pure "has a word character" check; integration tests
+through the HTTP API against the real test database (Constitution II), one file per user story;
+word splitting is tested through the API because it runs in PostgreSQL
+
+**Naming**: The spec's "next-page token" is the `cursor` query parameter and the `next_cursor`
+response field, as in specs/001.
 
 **Target Platform**: Linux, macOS or Windows developer machine; Linux server
 
@@ -52,7 +57,7 @@ keyset paging only (Constitution VI); `GET /bookmarks` behavior unchanged (FR-01
 | I. Typed API Contracts | New request model `BookmarkSearchQuery` (extends `BookmarkListQuery` with `q`) bound with `Query()`; response model is the existing `BookmarkPage`; errors declared with `ErrorResponse`; OpenAPI generated from the models | Pass |
 | II. Real-Database Testing | Integration tests hit the real test database migrated with Alembic (including 0002); table truncated before each test by the existing fixture; no mocks | Pass |
 | III. Consistent Error Shape | Invalid `q`, `tag`, `limit`, `cursor` and `offset` raise `RequestValidationError` and go through the existing handler: 422 `validation_error` in the shared envelope; no new error codes | Pass |
-| IV. Minimal Dependencies | No new dependency; word splitting uses `re` (stdlib) and built-in PostgreSQL functions | Pass |
+| IV. Minimal Dependencies | No new dependency; word splitting uses built-in PostgreSQL functions; the request check uses `str` methods | Pass |
 | V. Tests Ship With Every Feature | Every acceptance scenario of US1 to US3 and every edge case maps to a test (see tasks); full suite must pass on 3.11 to 3.13 | Pass |
 | VI. Cursor Pagination | Search reuses the `(created_at, id)` keyset and the opaque cursor from `cursor.py`; no offset in API or query; a test pages through all matches while matching bookmarks are added between requests | Pass |
 
@@ -86,15 +91,15 @@ migrations/versions/
 └── 0002_title_words_index.py      # NEW: GIN expression index on the title's words
 
 src/bookmarks_api/
-├── normalize.py         # + search_words(): pure function, the search's lowercase words
+├── normalize.py         # + has_word_character(): pure pre-check for FR-008
 ├── models.py            # + title_words(): the SQL expression; + Index ix_bookmarks_title_words
 ├── schemas.py           # + BookmarkSearchQuery (q, plus the inherited limit, cursor, tag)
-├── repository.py        # list_bookmarks gains an optional words= filter (default None: unchanged)
+├── repository.py        # list_bookmarks gains an optional search= filter (default None: unchanged)
 └── routes.py            # + GET /bookmarks/search (reuses reject_offset, cursor, BookmarkPage)
 
 tests/
 ├── unit/
-│   └── test_search_words.py                   # NEW
+│   └── test_search_query.py                   # NEW
 └── integration/
     ├── test_search_bookmarks.py               # NEW: US1
     ├── test_search_with_tag.py                # NEW: US2

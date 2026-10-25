@@ -112,6 +112,7 @@ following the next-page token until it runs out, confirming every match is seen 
   including spaces, punctuation, hyphens and apostrophes, separates words, in both the search and
   the title. A title "FastAPI: a tutorial" contains the words "fastapi", "a" and "tutorial"; a
   title "Spec-Kit guide" contains "spec", "kit" and "guide", so the search "spec-kit" finds it.
+  Symbols that are not letters or decimal digits, such as "½" and "²", also separate words.
 - A search word matches only a whole title word: "postgres" finds "Postgres backups", but "post"
   does not find "Postgres" and "gres" does not find "Postgres".
 - A search with no words left after removing separators is rejected with a validation
@@ -134,7 +135,9 @@ following the next-page token until it runs out, confirming every match is seen 
 - **FR-002**: Search MUST ignore letter case in both the search words and the titles.
 - **FR-003**: System MUST split both the search and each title into words, where a word is an
   unbroken run of letters (any alphabet) and digits and every other character separates words,
-  ignoring leading, trailing and repeated separators. When the search has several words, a bookmark MUST match only
+  ignoring leading, trailing and repeated separators. A digit is a decimal digit (0 to 9, or the
+  decimal digits of another script); other symbols, such as fractions ("½") and superscripts
+  ("²"), separate words. When the search has several words, a bookmark MUST match only
   when its title contains all of the words, in any order.
 - **FR-004**: A search word MUST match only a whole word of the title, never part of a longer word
   ("post" does not match "Postgres").
@@ -147,7 +150,8 @@ following the next-page token until it runs out, confirming every match is seen 
   (none on the last page). Paging with the token MUST NOT repeat or skip bookmarks when bookmarks
   are saved or deleted between requests (Constitution VI).
 - **FR-008**: System MUST reject a search that is missing, empty, has no words after removing
-  separators, or is longer than 200 characters, and MUST explain what is allowed.
+  separators, or is longer than 200 characters as sent (counted before separators are removed),
+  and MUST explain what is allowed.
 - **FR-009**: System MUST reject the same invalid paging and tag inputs the bookmark list rejects
   (page size outside 1 to 100, malformed next-page token, the removed offset option, invalid tag),
   with the same errors.
@@ -159,7 +163,8 @@ following the next-page token until it runs out, confirming every match is seen 
 
 - **Bookmark**: Unchanged from the bookmarks feature (specs/001-bookmarks-api). Search reads its
   title, tags and saved time.
-- **Search**: What the user typed, up to 200 characters, reduced to a list of lowercase words. It
+- **Search**: What the user typed, up to 200 characters as sent, reduced to a list of lowercase
+  words. It
   is not stored.
 
 ## Success Criteria *(mandatory)*

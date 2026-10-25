@@ -21,11 +21,11 @@ paths:
           in: query
           required: true
           schema: { type: string, minLength: 1, maxLength: 200 }
-          description: Search words; must contain at least one letter or digit
+          description: Search words, at most 200 characters as sent; must contain at least one letter or decimal digit
         - name: tag
           in: query
           required: false
-          schema: { type: string }
+          schema: { type: string, maxLength: 30 }
           description: Only bookmarks carrying this tag (normalized like tags)
         - name: limit
           in: query

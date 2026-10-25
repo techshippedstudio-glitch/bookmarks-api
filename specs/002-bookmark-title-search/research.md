@@ -21,16 +21,26 @@ rolled back.
 ## What a word is, and case
 
 - **Decision**: Lowercase, then split on every run of characters that are not letters or digits;
-  drop empty pieces. In SQL: `array_remove(regexp_split_to_array(lower(title), '[^[:alnum:]]+'), '')`.
-  In Python, for the search: `re.findall(r"[^\W_]+", q.lower())`, de-duplicated.
+  drop empty pieces. One SQL expression does this for both sides:
+  `title_words(x) = array_remove(regexp_split_to_array(lower(x), '[^[:alnum:]]+'), '')`, applied to
+  the title and to the search `q`. Python does not split the search; it only pre-checks that `q`
+  has at least one letter or decimal digit (`any(c.isalpha() or c.isdecimal() for c in q)`) so
+  FR-008 can be a 422.
 - **Rationale**: Clarification Q2 (letters of any alphabet and digits; everything else separates)
   and FR-002 (ignore case). `lower()` and `[[:alnum:]]` follow the database's character type, so
   "Ünï" and "ΣΟΦΙΑ" lowercase and split correctly (verified: `' FastAPI: a tutorial — Spec-Kit_guide
-  Python3 Ünï '` → `{fastapi,a,tutorial,spec,kit,guide,python3,ünï}`). `[^\W_]` is Python's
-  "word character except underscore", the same set for letters and decimal digits.
-- **Known difference**: Python counts a few numeric symbols (for example "½") as alphanumeric where
-  PostgreSQL's `[[:alnum:]]` does not. Such a search word appears in no title's word list, so the
-  search returns nothing; it can never widen a search. Accepted as a documented edge.
+  Python3 Ünï '` → `{fastapi,a,tutorial,spec,kit,guide,python3,ünï}`).
+- **Why not split the search in Python** (analyze I1): Python's `str.lower` and `[^\W_]+` disagree
+  with PostgreSQL's `lower` and `[[:alnum:]]` on real input: "ΟΔΟΣ" → Python `οδος`, PostgreSQL
+  `οδοσ`; "İstanbul" → Python `i`, `stanbul`, PostgreSQL `istanbul`; "x½y" → Python one word,
+  PostgreSQL `x`, `y`. A search typed exactly like a title would then miss that title (FR-002,
+  SC-002). Applying the same expression to both sides makes the two splits identical by
+  construction.
+- **Pre-check versus database split**: the Python pre-check (letter or decimal digit) matches
+  `[[:alnum:]]` closely ("½" and "²" are neither `isalpha` nor `isdecimal`, so `q="½"` is a 422).
+  If a rare character passes the pre-check but the database finds no word in `q`, the query also
+  requires `cardinality(title_words(q)) > 0`, so it returns an empty page rather than every
+  bookmark.
 - **Alternatives considered**: PostgreSQL full-text search (`to_tsvector('simple', title)`): its
   parser keeps "spec-kit" as a hyphenated token plus parts and treats URLs, emails and numbers
   specially, which contradicts Q2's single rule; `ILIKE '%word%'` (matches inside words, violating
@@ -39,10 +49,11 @@ rolled back.
 
 ## Matching: all words, whole words
 
-- **Decision**: `title_words(title) @> ARRAY[:w1, :w2, ...]` (array containment).
+- **Decision**: `title_words(title) @> title_words(:q) AND cardinality(title_words(:q)) > 0`
+  (array containment; `:q` is one bound parameter).
 - **Rationale**: Containment is exactly "the title has every search word, in any order" (FR-003,
-  Q1 of specify) with whole-word equality (FR-004). Repeated search words are harmless; Python
-  de-duplicates them anyway.
+  Q1 of specify) with whole-word equality (FR-004). Repeated search words are harmless (containment
+  ignores duplicates).
 - **Alternatives considered**: `&&` (overlap, means "any word": rejected by FR-003); a phrase match
   (rejected by the specify answer).
 
@@ -51,7 +62,9 @@ rolled back.
 - **Decision**: GIN expression index `ix_bookmarks_title_words` on the same `title_words(title)`
   expression, created in Alembic revision `0002` and declared in `models.py`. The query must use
   the identical expression with literal (not bound) pattern constants so the planner matches the
-  index.
+  index. The search side may be a bound parameter: the planner evaluates `title_words(:q)` once
+  and uses it as the index condition (verified: Bitmap Index Scan with `Index Cond: (... @>
+  '{guide,postgres}'::text[])` for `q = 'Guide, POSTGRES!'`, 6.4 ms at 100,000 rows).
 - **Rationale**: All functions in the expression are IMMUTABLE (`lower`, `regexp_split_to_array`,
   `array_remove`), so PostgreSQL accepts the expression index. Measured with 100,000 bookmarks
   (1,000 matching): first page (`LIMIT 21`, two words) 6.5 ms via Bitmap Index Scan + top-N sort;
@@ -63,7 +76,8 @@ rolled back.
 ## Request model and validation
 
 - **Decision**: `BookmarkSearchQuery(BookmarkListQuery)` adds `q: str` with `min_length=1`,
-  `max_length=200` and a validator that requires at least one word (FR-008). It inherits `limit`
+  `max_length=200` (counted as sent) and a validator that requires at least one letter or decimal
+  digit (FR-008). It inherits `limit`
   (1-100, default 20), `cursor` (validated by `decode_cursor`) and `tag` (normalized by
   `normalize_tag`), so FR-009's "same errors" holds by construction. The route also takes the
   existing `reject_offset` dependency.
@@ -75,8 +89,8 @@ rolled back.
 
 ## Repository
 
-- **Decision**: Give `repository.list_bookmarks` an optional keyword `words: Sequence[str] | None =
-  None`; when given, add the containment condition to both the count and the page query.
+- **Decision**: Give `repository.list_bookmarks` an optional keyword `search: str | None = None`;
+  when given, add the containment and cardinality conditions to both the count and the page query.
 - **Rationale**: Search is the list with one more condition: same order, keyset, `limit + 1`
   look-ahead and `total`. One function keeps them from drifting; the default `None` leaves the list
   exactly as it is (FR-011), which the existing tests prove.

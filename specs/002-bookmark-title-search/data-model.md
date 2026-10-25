@@ -13,11 +13,11 @@ Search stores nothing new. It reads the existing `bookmarks` table defined in
 
 ## Title words (derived, not stored)
 
-The words of a title are computed by one SQL expression, used identically in the index and the
-query:
+The words of a title, and of a search, are computed by one SQL expression, used identically in
+the index, on the title side of the query and on the search side:
 
 ```text
-title_words(title) = array_remove(regexp_split_to_array(lower(title), '[^[:alnum:]]+'), '')
+title_words(x) = array_remove(regexp_split_to_array(lower(x), '[^[:alnum:]]+'), '')
 ```
 
 - Lowercased (FR-002).
@@ -37,8 +37,8 @@ Examples: "FastAPI: a tutorial" â†’ `{fastapi, a, tutorial}`; "Spec-Kit guide" â
 
 | Field | Rule | Error when broken |
 | --- | --- | --- |
-| `q` | Required; 1 to 200 characters; at least one word after splitting | 422 `validation_error`, field `query.q` |
-| words | `q` lowercased and split with the same rule as titles, duplicates removed, order kept | (derived) |
+| `q` | Required; 1 to 200 characters as sent; at least one letter or decimal digit | 422 `validation_error`, field `query.q` |
+| words | `title_words(q)`: the same expression as titles, computed in the database | (derived) |
 | `tag` | Optional; normalized and validated as in the list (`normalize_tag`) | 422, field `query.tag` |
 | `limit` | 1 to 100, default 20 | 422, field `query.limit` |
 | `cursor` | Optional; a `next_cursor` from the list or a search | 422, field `query.cursor` |
@@ -46,8 +46,9 @@ Examples: "FastAPI: a tutorial" â†’ `{fastapi, a, tutorial}`; "Spec-Kit guide" â
 
 ## Matching rule
 
-A bookmark matches when `title_words(title) @> words` (its title contains every search word, as a
-whole word, in any order) and, if `tag` is given, `tags @> ARRAY[tag]`. Results are ordered by
+A bookmark matches when `title_words(title) @> title_words(q)` and `cardinality(title_words(q)) > 0`
+(its title contains every search word, as a whole word, in any order; a search the database splits
+into no words matches nothing) and, if `tag` is given, `tags @> ARRAY[tag]`. Results are ordered by
 `created_at DESC, id DESC`; the next page starts strictly after the cursor's `(created_at, id)`.
 
 ## State transitions

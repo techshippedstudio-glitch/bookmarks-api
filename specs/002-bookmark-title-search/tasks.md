@@ -40,14 +40,14 @@ description: "Task list for Search Bookmarks by Title"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T002 [P] Add `MAX_SEARCH_LENGTH = 200` and a pure function `search_words(query: str) -> list[str]` to `src/bookmarks_api/normalize.py`: lowercase, then `re.findall(r"[^\W_]+", ...)` ("A word is an unbroken run of letters (any alphabet) and digits; every other character separates words"), duplicates removed keeping first-seen order; returns `[]` when there are no words
-- [ ] T003 [P] Write unit tests for `search_words` in `tests/unit/test_search_words.py`: case folded ("PostgreSQL" → `["postgresql"]`), separators collapsed ("  postgres   guide " → `["postgres", "guide"]`), punctuation, hyphen, apostrophe and underscore split ("FastAPI: a tutorial", "Spec-Kit", "don't", "snake_case"), digits kept inside a word ("Python3"), non-English letters ("Ünï ΣΟΦΙΑ" → `["ünï", "σοφια"]`), duplicates removed ("guide Guide" → `["guide"]`), only separators ("  -- !" → `[]`)
-- [ ] T004 Add a `title_words(column)` helper returning the SQL expression `array_remove(regexp_split_to_array(lower(title), '[^[:alnum:]]+'), '')` (pattern and empty string as literal constants, not bound parameters, so the planner matches the index) and declare `Index("ix_bookmarks_title_words", title_words(title), postgresql_using="gin")` in `BookmarkRow.__table_args__` in `src/bookmarks_api/models.py`
+- [ ] T002 [P] Add `MAX_SEARCH_LENGTH = 200` and a pure function `has_word_character(query: str) -> bool` to `src/bookmarks_api/normalize.py`: true when any character is a letter or a decimal digit (`c.isalpha() or c.isdecimal()`). It only pre-checks FR-008; the search is split into words in the database by `title_words` (T004), never in Python (research.md, analyze I1)
+- [ ] T003 [P] Write unit tests for `has_word_character` in `tests/unit/test_search_query.py`: true for "postgres", "Python3", "3", "ΣΟΦΙΑ", "  a  "; false for "", "   ", "  -- !", "_", "½", "²"
+- [ ] T004 Add a `title_words(expr)` helper returning the SQL expression `array_remove(regexp_split_to_array(lower(expr), '[^[:alnum:]]+'), '')` for any text expression (the title column or the bound search) (pattern and empty string as literal constants, not bound parameters, so the planner matches the index) and declare `Index("ix_bookmarks_title_words", title_words(title), postgresql_using="gin")` in `BookmarkRow.__table_args__` in `src/bookmarks_api/models.py`
 - [ ] T005 Create Alembic revision `migrations/versions/0002_title_words_index.py` (`revision = "0002"`, `down_revision = "0001"`): `upgrade()` creates GIN index `ix_bookmarks_title_words` on `bookmarks` over exactly the expression in T004; `downgrade()` drops it (depends on T004 for the expression text)
-- [ ] T006 Extend `list_bookmarks` in `src/bookmarks_api/repository.py` with an optional keyword `words: Sequence[str] | None = None`; when given, add `title_words(BookmarkRow.title).contains(list(words))` (`@>`) to the conditions used by both the `total` count and the page query, keeping the existing tag condition, `(created_at, id)` keyset, `created_at DESC, id DESC` order and `limit + 1` look-ahead; with `words=None` the function behaves exactly as before (FR-011) (depends on T004)
-- [ ] T007 Add `BookmarkSearchQuery(BookmarkListQuery)` to `src/bookmarks_api/schemas.py` with `q: str = Field(min_length=1, max_length=MAX_SEARCH_LENGTH, description=...)` ("q: Required; 1 to 200 characters; at least one word after splitting") and a validator that raises `ValueError` with a message naming letters or digits when `search_words(q)` is empty; `limit` ("1 to 100, default 20"), `cursor` and `tag` are inherited unchanged (depends on T002)
+- [ ] T006 Extend `list_bookmarks` in `src/bookmarks_api/repository.py` with an optional keyword `search: str | None = None`; when given, add `title_words(BookmarkRow.title).contains(title_words(bindparam(search)))` (`@>`) and `func.cardinality(title_words(<same bound search>)) > 0` to the conditions used by both the `total` count and the page query, keeping the existing tag condition, `(created_at, id)` keyset, `created_at DESC, id DESC` order and `limit + 1` look-ahead; with `search=None` the function behaves exactly as before (FR-011) (depends on T004)
+- [ ] T007 Add `BookmarkSearchQuery(BookmarkListQuery)` to `src/bookmarks_api/schemas.py` with `q: str = Field(min_length=1, max_length=MAX_SEARCH_LENGTH, description=...)` ("q: Required; 1 to 200 characters as sent; at least one letter or decimal digit") and a validator that raises `ValueError` with a message naming letters or digits when `has_word_character(q)` is false; `q` is passed on unchanged (not trimmed); `limit` ("1 to 100, default 20"), `cursor` and `tag` are inherited unchanged (depends on T002)
 
-**Checkpoint**: Foundation ready; `uv run pytest` still passes (existing tests only touch `words=None`)
+**Checkpoint**: Foundation ready; `uv run pytest` still passes (existing tests only touch `search=None`)
 
 ---
 
@@ -61,13 +61,13 @@ description: "Task list for Search Bookmarks by Title"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T008 [P] [US1] Write integration tests in `tests/integration/test_search_bookmarks.py` for spec US1 scenarios 1 to 5 (matching titles newest first with `total` 2; "postgresql", "POSTGRESQL", "PostgreSQL" all match; no match → `{"items": [], "total": 0, "limit": 20, "next_cursor": null}`; "indexing postgres" matches and "postgres backups" does not; missing `q`, `q=""`, `q="  -- !"` and a 201-character `q` → 422 `validation_error` with `details[0].field == "query.q"`, while a 200-character `q` is accepted) and the Edge Cases (extra spaces ignored; "spec-kit" finds "Spec-Kit guide"; "post" and "gres" do not find "Postgres"; a word only in the link or tags does not match; a deleted bookmark no longer appears)
+- [ ] T008 [P] [US1] Write integration tests in `tests/integration/test_search_bookmarks.py` for spec US1 scenarios 1 to 5 (matching titles newest first with `total` 2; "postgresql", "POSTGRESQL", "PostgreSQL" all match; no match → `{"items": [], "total": 0, "limit": 20, "next_cursor": null}`; "indexing postgres" matches and "postgres backups" does not; missing `q`, `q=""`, `q="  -- !"` and a 201-character `q` → 422 `validation_error` with `details[0].field == "query.q"`, while a 200-character `q` is accepted) and the Edge Cases (extra spaces ignored; "spec-kit" finds "Spec-Kit guide"; "post" and "gres" do not find "Postgres"; letter case is ignored for non-English letters (title "ΟΔΟΣ" found by "οδος", "ΟΔΟΣ" and "οδοσ"; title "İstanbul guide" found by "İstanbul"); "½" separates words ("x½y" title found by "x"); `q="½"` → 422; a word only in the link or tags does not match; a deleted bookmark no longer appears)
 - [ ] T009 [US1] Add a test in `tests/integration/test_search_bookmarks.py` that `/openapi.json` lists `GET /bookmarks/search` with required query parameter `q`, a `200` response referencing `BookmarkPage` and a `422` response referencing `ErrorResponse` (Constitution I quality gate)
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Add `GET /bookmarks/search` to `src/bookmarks_api/routes.py`, following `list_bookmarks`: `response_model=BookmarkPage`, `summary="Search bookmarks by words in the title, newest first"`, `responses=ERROR_422`, `dependencies=[Depends(reject_offset)]`, `query: Annotated[BookmarkSearchQuery, Query()]`; decode the cursor, call `repository.list_bookmarks(session, limit=query.limit, after=after, words=search_words(query.q))`, and build `next_cursor` and the page exactly as the list route does (depends on T006, T007)
-- [ ] T011 [US1] Run `tests/integration/test_search_bookmarks.py` and `tests/unit/test_search_words.py` and make them pass; run the full suite to confirm the existing list, filter, save and delete tests are unchanged (FR-011)
+- [ ] T010 [US1] Add `GET /bookmarks/search` to `src/bookmarks_api/routes.py`, following `list_bookmarks`: `response_model=BookmarkPage`, `summary="Search bookmarks by words in the title, newest first"`, `responses=ERROR_422`, `dependencies=[Depends(reject_offset)]`, `query: Annotated[BookmarkSearchQuery, Query()]`; decode the cursor, call `repository.list_bookmarks(session, limit=query.limit, after=after, search=query.q)`, and build `next_cursor` and the page exactly as the list route does (depends on T006, T007)
+- [ ] T011 [US1] Run `tests/integration/test_search_bookmarks.py` and `tests/unit/test_search_query.py` and make them pass; run the full suite to confirm the existing list, filter, save and delete tests are unchanged (FR-011)
 
 **Checkpoint**: User Story 1 is fully functional and testable on its own (MVP)
 
@@ -160,8 +160,8 @@ Task: "Integration tests for US2 in tests/integration/test_search_with_tag.py"
 Task: "Integration tests for US3 in tests/integration/test_search_paging.py"
 
 # Foundational work in parallel before US1:
-Task: "search_words() in src/bookmarks_api/normalize.py"
-Task: "Unit tests in tests/unit/test_search_words.py"
+Task: "has_word_character() in src/bookmarks_api/normalize.py"
+Task: "Unit tests in tests/unit/test_search_query.py"
 ```
 
 ---
